@@ -25,14 +25,56 @@ function sanitizeVersionPath(versionPath = '') {
   return trimmed.replace(/^\/+/, '').replace(/\/+$/, '');
 }
 
+function normalizeErrorMessage(message, fallbackMessage) {
+  if (message == null) {
+    return fallbackMessage;
+  }
+
+  if (typeof message === 'string') {
+    const trimmed = message.trim();
+
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object') {
+          return normalizeErrorMessage(parsed, fallbackMessage);
+        }
+      } catch (_error) {
+        // Ignore JSON parsing errors and fall back to the raw message.
+      }
+    }
+
+    return message;
+  }
+
+  if (typeof message === 'object') {
+    const preferredKeys = ['description', 'mensaje', 'message', 'error'];
+    const extracted = preferredKeys
+      .map((key) => message?.[key])
+      .find((value) => typeof value === 'string' && value.trim().length > 0);
+
+    if (extracted) {
+      return extracted;
+    }
+
+    try {
+      return JSON.stringify(message);
+    } catch (_error) {
+      return String(message);
+    }
+  }
+
+  return String(message);
+}
+
 function handleAxiosError(error, fallbackMessage) {
-  const err = new Error(
-    error.response?.data?.mensaje ||
-    error.response?.data?.error ||
-    error.response?.data?.message ||
-    error.message ||
-    fallbackMessage
-  );
+  const message =
+    error.response?.data?.mensaje ??
+    error.response?.data?.error ??
+    error.response?.data?.message ??
+    error.message;
+
+  const err = new Error(normalizeErrorMessage(message, fallbackMessage));
   err.status = error.response?.status || 502;
   err.cause = error;
   throw err;
