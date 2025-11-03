@@ -20,6 +20,12 @@ app.get('/', (_req, res) => {
         totals: '/api/providers/suizo/invoices/totals',
         details: '/api/providers/suizo/invoices/details',
         perceptions: '/api/providers/suizo/invoices/perceptions'
+      },
+      cofarsur: {
+        comprobantes: '/api/providers/cofarsur/comprobantes',
+        cabecera: '/api/providers/cofarsur/comprobantes/cabecera',
+        detalle: '/api/providers/cofarsur/comprobantes/detalle',
+        impuestos: '/api/providers/cofarsur/comprobantes/impuestos'
       }
     }
   });

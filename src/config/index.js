@@ -18,6 +18,15 @@ const config = {
       cuenta: process.env.SUIZO_CUENTA
         ? Number(process.env.SUIZO_CUENTA)
         : undefined
+    },
+    cofarsur: {
+      apiUrl: process.env.COFARSUR_API_URL,
+      usuario: process.env.COFARSUR_USUARIO,
+      clave: process.env.COFARSUR_CLAVE,
+      token: process.env.COFARSUR_TOKEN,
+      maxRangeDays: process.env.COFARSUR_MAX_RANGE_DAYS
+        ? Number(process.env.COFARSUR_MAX_RANGE_DAYS)
+        : 6
     }
   }
 };
