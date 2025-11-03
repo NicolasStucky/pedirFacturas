@@ -1,5 +1,17 @@
 const DATE_REGEX = /^(\d{2})\/(\d{2})\/(\d{4})$/;
 
+function toUTCMidnight(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+export function formatToDDMMYYYY(date) {
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const year = date.getUTCFullYear();
+
+  return `${day}/${month}/${year}`;
+}
+
 export function parseDDMMYYYY(input) {
   if (typeof input !== 'string') {
     throw new Error('Formato de fecha inválido, debe ser una cadena');
@@ -55,8 +67,21 @@ export function ensureMaxRange(desde, hasta, maxDays) {
   return { start, end };
 }
 
+export function getDefaultRange(maxDays = 6) {
+  const end = toUTCMidnight();
+  const start = new Date(end);
+  start.setUTCDate(end.getUTCDate() - maxDays);
+
+  return {
+    desde: formatToDDMMYYYY(start),
+    hasta: formatToDDMMYYYY(end)
+  };
+}
+
 export default {
   parseDDMMYYYY,
   diffInDays,
-  ensureMaxRange
+  ensureMaxRange,
+  getDefaultRange,
+  formatToDDMMYYYY
 };

@@ -1,14 +1,14 @@
 import config from '../config/index.js';
 import { fetchInvoices } from '../clients/suizoClient.js';
-import { ensureMaxRange } from '../utils/date.js';
+import { ensureMaxRange, getDefaultRange } from '../utils/date.js';
 
 const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
 
 function buildBasePayload(query, itemType) {
   const { suizo } = config.providers;
   const {
-    tcDesde,
-    tcHasta,
+    tcDesde: rawDesde,
+    tcHasta: rawHasta,
     tnEmpresa,
     tcUsuario,
     tcClave,
@@ -17,11 +17,9 @@ function buildBasePayload(query, itemType) {
     tcItems
   } = query;
 
-  if (!tcDesde || !tcHasta) {
-    const error = new Error('Los parámetros tcDesde y tcHasta son obligatorios');
-    error.status = 400;
-    throw error;
-  }
+  const defaults = getDefaultRange(MAX_RANGE_DAYS);
+  const tcDesde = rawDesde ?? defaults.desde;
+  const tcHasta = rawHasta ?? defaults.hasta;
 
   ensureMaxRange(tcDesde, tcHasta, MAX_RANGE_DAYS);
 

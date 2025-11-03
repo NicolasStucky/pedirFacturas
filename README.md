@@ -57,13 +57,16 @@ Parámetros soportados (query string):
 
 | Parámetro   | Obligatorio | Descripción |
 |-------------|-------------|-------------|
-| `tcDesde`   | Sí          | Fecha inicial en formato `dd/mm/aaaa`. |
-| `tcHasta`   | Sí          | Fecha final en formato `dd/mm/aaaa`. No puede exceder los 7 días respecto a `tcDesde`. |
+| `tcDesde`   | No          | Fecha inicial en formato `dd/mm/aaaa`. Si no se envía, se toma 6 días antes de `tcHasta` (por defecto hoy). |
+| `tcHasta`   | No          | Fecha final en formato `dd/mm/aaaa`. El rango efectivo no puede exceder los 7 días corridos. Por defecto es la fecha actual. |
 | `tnEmpresa` | No          | Código de empresa (por defecto `1`). |
 | `tcUsuario` | No          | Usuario asignado para el servicio web. |
 | `tcClave`   | No          | Clave del usuario. |
 | `tcGrupo`   | No          | Grupo de consulta. Valores `G` o `C`. |
 | `tnCuenta`  | No          | Código de cuenta específico. |
+
+> **Nota:** cuando no se envían `tcDesde` y/o `tcHasta`, el servicio utiliza por defecto el rango de los últimos 7 días corridos
+contados hasta la fecha actual.
 
 Los endpoints devuelven el payload enviado al servicio de Suizo y la respuesta interpretada (XML crudo y objeto parseado) para facilitar el consumo en otras capas de la aplicación.
 
