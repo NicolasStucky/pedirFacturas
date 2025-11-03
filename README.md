@@ -1,6 +1,6 @@
 # Pedir Facturas - Backend
 
-Backend en Node.js y Express para centralizar las consultas de facturación de los proveedores Cofasur, Monroe, Kellerhoof, Sud y Suizo. El objetivo es ofrecer una capa unificada que pueda reutilizarse en otros proyectos.
+Backend en Node.js y Express para centralizar las consultas de facturación del proveedor **Suizo**. El objetivo es ofrecer una capa unificada que pueda reutilizarse en otros proyectos.
 
 ## Requisitos previos
 
@@ -13,7 +13,7 @@ Backend en Node.js y Express para centralizar las consultas de facturación de l
 npm install
 ```
 
-Cree un archivo `.env` a partir del `.env.example` y complete las credenciales de cada proveedor:
+Cree un archivo `.env` a partir del `.env.example` y complete las credenciales del proveedor Suizo:
 
 ```bash
 cp .env.example .env
@@ -35,15 +35,17 @@ npm start
 
 La aplicación expone por defecto los endpoints en `http://localhost:3000`.
 
+### Página principal
+
+- `GET /`
+
+Devuelve un mensaje de bienvenida junto con un resumen de los endpoints disponibles para que puedas verificar rápidamente la configuración del servicio.
+
 ## Endpoints principales
 
 ### Salud del servicio
 
 - `GET /health`
-
-### Listado de proveedores soportados
-
-- `GET /api/providers`
 
 ### Proveedor Suizo
 
@@ -65,10 +67,6 @@ Parámetros soportados (query string):
 
 Los endpoints devuelven el payload enviado al servicio de Suizo y la respuesta interpretada (XML crudo y objeto parseado) para facilitar el consumo en otras capas de la aplicación.
 
-### Resto de proveedores
-
-Se generaron endpoints placeholder que devuelven **HTTP 501 (Not Implemented)** para Cofasur, Monroe, Kellerhoof y Sud. Las integraciones específicas se deben implementar en `src/services/` creando módulos equivalentes al de Suizo y actualizando las rutas correspondientes.
-
 ## Arquitectura
 
 - **Express** como framework HTTP.
@@ -79,6 +77,6 @@ Se generaron endpoints placeholder que devuelven **HTTP 501 (Not Implemented)** 
 
 ## Próximos pasos sugeridos
 
-1. Completar la integración real de los proveedores restantes reutilizando la estructura del servicio de Suizo.
-2. Añadir pruebas automatizadas y autenticación si la aplicación va a exponerse públicamente.
-3. Incorporar caché o persistencia según las necesidades del proyecto que consuma este backend.
+1. Añadir pruebas automatizadas y autenticación si la aplicación va a exponerse públicamente.
+2. Incorporar caché o persistencia según las necesidades del proyecto que consuma este backend.
+3. Implementar integraciones para otros proveedores reutilizando la estructura establecida una vez que se disponga de su documentación.

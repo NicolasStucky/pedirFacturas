@@ -18,22 +18,6 @@ const config = {
       cuenta: process.env.SUIZO_CUENTA
         ? Number(process.env.SUIZO_CUENTA)
         : undefined
-    },
-    cofasur: {
-      baseUrl: process.env.COFASUR_API_BASE_URL ?? '',
-      apiKey: process.env.COFASUR_API_KEY ?? ''
-    },
-    monroe: {
-      baseUrl: process.env.MONROE_API_BASE_URL ?? '',
-      apiKey: process.env.MONROE_API_KEY ?? ''
-    },
-    kellerhoof: {
-      baseUrl: process.env.KELLERHOOF_API_BASE_URL ?? '',
-      apiKey: process.env.KELLERHOOF_API_KEY ?? ''
-    },
-    sud: {
-      baseUrl: process.env.SUD_API_BASE_URL ?? '',
-      apiKey: process.env.SUD_API_KEY ?? ''
     }
   }
 };
