@@ -25,14 +25,34 @@ function sanitizeVersionPath(versionPath = '') {
   return trimmed.replace(/^\/+/, '').replace(/\/+$/, '');
 }
 
+function normalizeErrorMessage(message, fallbackMessage) {
+  if (message == null) {
+    return fallbackMessage;
+  }
+
+  if (typeof message === 'string') {
+    return message;
+  }
+
+  if (typeof message === 'object') {
+    try {
+      return JSON.stringify(message);
+    } catch (_error) {
+      return String(message);
+    }
+  }
+
+  return String(message);
+}
+
 function handleAxiosError(error, fallbackMessage) {
-  const err = new Error(
-    error.response?.data?.mensaje ||
-    error.response?.data?.error ||
-    error.response?.data?.message ||
-    error.message ||
-    fallbackMessage
-  );
+  const message =
+    error.response?.data?.mensaje ??
+    error.response?.data?.error ??
+    error.response?.data?.message ??
+    error.message;
+
+  const err = new Error(normalizeErrorMessage(message, fallbackMessage));
   err.status = error.response?.status || 502;
   err.cause = error;
   throw err;
