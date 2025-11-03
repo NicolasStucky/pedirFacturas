@@ -31,6 +31,19 @@ function normalizeErrorMessage(message, fallbackMessage) {
   }
 
   if (typeof message === 'string') {
+    const trimmed = message.trim();
+
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === 'object') {
+          return normalizeErrorMessage(parsed, fallbackMessage);
+        }
+      } catch (_error) {
+        // Ignore JSON parsing errors and fall back to the raw message.
+      }
+    }
+
     return message;
   }
 
