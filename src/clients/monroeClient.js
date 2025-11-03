@@ -35,6 +35,15 @@ function normalizeErrorMessage(message, fallbackMessage) {
   }
 
   if (typeof message === 'object') {
+    const preferredKeys = ['description', 'mensaje', 'message', 'error'];
+    const extracted = preferredKeys
+      .map((key) => message?.[key])
+      .find((value) => typeof value === 'string' && value.trim().length > 0);
+
+    if (extracted) {
+      return extracted;
+    }
+
     try {
       return JSON.stringify(message);
     } catch (_error) {
