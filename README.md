@@ -86,6 +86,29 @@ Parámetros soportados (query string):
 
 La respuesta mantiene la información de estado (`estado`, `mensaje`, `error`) junto con los bloques de `cabecera`, `detalle` e `impuestos` tal como los provee Cofarsur, además del contenido bruto devuelto por el servicio.
 
+### Proveedor Monroe Americana
+
+- `GET /api/providers/monroe/comprobantes`
+- `GET /api/providers/monroe/comprobantes/:comprobanteId`
+
+Parámetros soportados en la consulta general (`/comprobantes`):
+
+| Parámetro                    | Obligatorio | Descripción |
+|------------------------------|-------------|-------------|
+| `fechaDesde` / `fecha_desde` | No          | Fecha inicial en formato ISO 8601 (por ejemplo `2024-04-06T00:00:00.000Z`). Si no se envía se usa el rango por defecto (últimos 7 días corridos). |
+| `fechaHasta` / `fecha_hasta` | No          | Fecha final en formato ISO 8601. Debe respetar el rango máximo de 7 días corridos. |
+| `nro_comprobante`            | No          | Número completo del comprobante (`0001-00000001`). |
+| `tipo`                       | No          | Tipo de comprobante (por ejemplo `FC`). |
+| `letra`                      | No          | Letra del comprobante (por ejemplo `A`). |
+| `software_key`               | Sí*         | Clave del desarrollador provista por Monroe. |
+| `ecommerce_customer_key`     | Sí*         | Clave asignada al cliente/punto de venta. |
+| `ecommerce_customer_reference` | Sí*       | GLN/CUFE o identificador de domicilio. |
+| `token_duration`             | No          | Duración del token (en minutos). |
+
+Parámetros marcados con `*` son obligatorios únicamente si no se configuraron en variables de entorno. El servicio obtiene el token de manera automática utilizando `Auth/login`, lo cachea en memoria hasta su caducidad y lo adjunta en el encabezado `Authorization` de cada petición.
+
+El endpoint de detalle (`/comprobantes/:comprobanteId`) espera en la ruta el identificador completo del comprobante (por ejemplo `FC-A-1103-01522760`) y reutiliza las mismas credenciales/query parameters para autenticarse.
+
 ## Configuración
 
 Variables relevantes en `.env`:
@@ -110,6 +133,15 @@ COFARSUR_USUARIO=usuario
 COFARSUR_CLAVE=clave
 COFARSUR_TOKEN=token
 COFARSUR_MAX_RANGE_DAYS=6
+
+# Proveedor Monroe Americana
+MONROE_BASE_URL=https://servicios-test.monroeamericana.com.ar/api-cli/
+MONROE_ADE_VERSION=ade/1.0.0
+MONROE_SOFTWARE_KEY=Z2EXo2S75sIRNMzj1ChQOg
+MONROE_CUSTOMER_KEY=6a67f05b89efc157e36e21aebe806224
+MONROE_CUSTOMER_REFERENCE=107601
+MONROE_TOKEN_DURATION=300
+MONROE_TIMEOUT=10000
 ```
 
 ## Arquitectura
