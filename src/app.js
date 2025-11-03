@@ -26,6 +26,11 @@ app.get('/', (_req, res) => {
         cabecera: '/api/providers/cofarsur/comprobantes/cabecera',
         detalle: '/api/providers/cofarsur/comprobantes/detalle',
         impuestos: '/api/providers/cofarsur/comprobantes/impuestos'
+      },
+      Monroe : {
+        comprobantes: '/api/providers/monroe/comprobantes',
+        comprobanteDetalle :
+          '/api/providers/monroe/checkers/:checkerId'
       }
     }
   });
