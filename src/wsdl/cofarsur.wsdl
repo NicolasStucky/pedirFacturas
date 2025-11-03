@@ -1,0 +1,539 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<definitions xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:SOAP-ENC="http://schemas.xmlsoap.org/soap/encoding/" xmlns:tns="urn:/ws" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns="http://schemas.xmlsoap.org/wsdl/" targetNamespace="urn:/ws">
+<types>
+<xsd:schema targetNamespace="urn:/ws">
+<xsd:import namespace="http://schemas.xmlsoap.org/soap/encoding/"/>
+<xsd:import namespace="http://schemas.xmlsoap.org/wsdl/"/>
+<xsd:complexType name="DatosConsultarExistencia">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="codigo_barra" type="xsd:string"/>
+<xsd:element name="codigo_cofarsur" type="xsd:int"/>
+<xsd:element name="codigo_alfabeta" type="xsd:int"/>
+<xsd:element name="troquel" type="xsd:int"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaConsultarExistencia">
+<xsd:all>
+<xsd:element name="estado" type="xsd:boolean"/>
+<xsd:element name="stock" type="xsd:int"/>
+<xsd:element name="stock_mensaje" type="xsd:string"/>
+<xsd:element name="error" type="xsd:string"/>
+<xsd:element name="producto_nombre" type="xsd:string"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="DatosAgregarProductoCarrito">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="codigo_barra" type="xsd:string"/>
+<xsd:element name="codigo_cofarsur" type="xsd:int"/>
+<xsd:element name="codigo_alfabeta" type="xsd:int"/>
+<xsd:element name="troquel" type="xsd:int"/>
+<xsd:element name="cantidad" type="xsd:int"/>
+<xsd:element name="oferta_id" type="xsd:int"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaAgregarProductoCarrito">
+<xsd:all>
+<xsd:element name="estado" type="xsd:boolean"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="DatosConsultarPrecio">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="codigo_barra" type="xsd:string"/>
+<xsd:element name="codigo_cofarsur" type="xsd:int"/>
+<xsd:element name="codigo_alfabeta" type="xsd:int"/>
+<xsd:element name="troquel" type="xsd:int"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaConsultarPrecio">
+<xsd:all>
+<xsd:element name="estado" type="xsd:boolean"/>
+<xsd:element name="costo" type="xsd:decimal"/>
+<xsd:element name="descuento_oferta" type="xsd:decimal"/>
+<xsd:element name="costo_oferta" type="xsd:decimal"/>
+<xsd:element name="mensaje" type="xsd:string"/>
+<xsd:element name="error" type="xsd:string"/>
+<xsd:element name="producto_nombre" type="xsd:string"/>
+<xsd:element name="iva" type="xsd:decimal"/>
+<xsd:element name="costo_sin_iva" type="xsd:decimal"/>
+<xsd:element name="costo_oferta_sin_iva" type="xsd:decimal"/>
+<xsd:element name="unidades_minimas" type="xsd:integer"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="DatosBuscarCliente">
+<xsd:all>
+<xsd:element name="nombre" type="xsd:string"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaBuscarCliente">
+<xsd:all>
+<xsd:element name="clientes" type=""/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="DatosConsultarCondicion">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaConsultarCondicion">
+<xsd:all>
+<xsd:element name="estado" type="xsd:boolean"/>
+<xsd:element name="condicion_medicamento" type="xsd:decimal"/>
+<xsd:element name="condicion_perfumeria" type="xsd:decimal"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="DatosConsultarRepartos">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="cliente_id" type="xsd:int"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaConsultarRepartos">
+<xsd:all>
+<xsd:element name="estado" type="xsd:boolean"/>
+<xsd:element name="error" type="xsd:string"/>
+<xsd:element name="repartos" type="" reparto_nombre="Array" reparto_id="Array" reparto_sucursal="Array"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="productosData">
+<xsd:all>
+<xsd:element name="codigo_barra" type="xsd:string"/>
+<xsd:element name="troquel" type="xsd:int"/>
+<xsd:element name="cantidad" type="xsd:int"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="productosArray">
+<xsd:complexContent>
+<xsd:restriction base="SOAP-ENC:Array">
+<xsd:attribute ref="SOAP-ENC:arrayType" wsdl:arrayType="tns:productosData[]"/>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+<xsd:complexType name="datosClientesArray">
+<xsd:complexContent>
+<xsd:restriction base="SOAP-ENC:Array">
+<xsd:attribute ref="SOAP-ENC:arrayType" wsdl:arrayType="tns:productosData[]"/>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+<xsd:complexType name="DatosAgregarProductosWS">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+<xsd:element name="cliente_id" type="xsd:int"/>
+<xsd:element name="reparto_id" type="xsd:int"/>
+<xsd:element name="mostrador" type="xsd:boolean"/>
+<xsd:element name="productos" type="tns:productosArray"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaAgregarProductosWS">
+<xsd:all>
+<xsd:element name="estado" type="xsd:boolean"/>
+<xsd:element name="productos_no_encontrado" type="" codigo_barra="Array"/>
+<xsd:element name="productos_en_falta" type="" nombre="Array" codigo_barra="Array" cantidad_en_falta="Array"/>
+<xsd:element name="error" type="xsd:string"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="DatosConsultarDatosCliente">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaConsultarDatosCliente">
+<xsd:all>
+<xsd:element name="estado" type="xsd:boolean"/>
+<xsd:element name="clienteId" type="xsd:int"/>
+<xsd:element name="clienteCuit" type="xsd:int"/>
+<xsd:element name="clienteNombre" type="xsd:string"/>
+<xsd:element name="clienteTipo" type="xsd:string"/>
+<xsd:element name="clienteSucursalId" type="xsd:int"/>
+<xsd:element name="clienteSucursalNombre" type="xsd:string"/>
+<xsd:element name="mensaje" type="xsd:string"/>
+<xsd:element name="error" type="xsd:string"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="DatosSolicitarPedido">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+<xsd:element name="reparto" type="xsd:boolean"/>
+<xsd:element name="productos" type="tns:productosArray"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaSolicitarPedido">
+<xsd:all>
+<xsd:element name="estado" type="xsd:boolean"/>
+<xsd:element name="productos_no_encontrados" type="tns:productosArray"/>
+<xsd:element name="productos_no_habilitados" type="tns:productosArray"/>
+<xsd:element name="productos_en_falta" type="tns:productosArray"/>
+<xsd:element name="observaciones" type="xsd:string"/>
+<xsd:element name="entrega" type="xsd:string"/>
+<xsd:element name="numero_pedido" type="xsd:string"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="CabeceraData">
+<xsd:all>
+<xsd:element name="identificador_cabecera" type="xsd:string"/>
+<xsd:element name="prefijo" type="xsd:int"/>
+<xsd:element name="letra" type="xsd:string"/>
+<xsd:element name="numero" type="xsd:int"/>
+<xsd:element name="gravado" type="xsd:decimal"/>
+<xsd:element name="exento" type="xsd:decimal"/>
+<xsd:element name="iva" type="xsd:decimal"/>
+<xsd:element name="percepcion" type="xsd:decimal"/>
+<xsd:element name="total" type="xsd:decimal"/>
+<xsd:element name="fecha" type="xsd:string"/>
+<xsd:element name="vencimiento" type="xsd:string"/>
+<xsd:element name="tipo_documento" type="xsd:string"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="CabeceraArray">
+<xsd:complexContent>
+<xsd:restriction base="SOAP-ENC:Array">
+<xsd:attribute ref="SOAP-ENC:arrayType" wsdl:arrayType="tns:CabeceraData[]"/>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+<xsd:complexType name="DetalleData">
+<xsd:all>
+<xsd:element name="identificador_detalle" type="xsd:string"/>
+<xsd:element name="numero" type="xsd:int"/>
+<xsd:element name="codigo_barra" type="xsd:string"/>
+<xsd:element name="descripcion" type="xsd:string"/>
+<xsd:element name="cantidad" type="xsd:int"/>
+<xsd:element name="medicamento" type="xsd:boolean"/>
+<xsd:element name="tasa_iva" type="xsd:decimal"/>
+<xsd:element name="precio" type="xsd:decimal"/>
+<xsd:element name="costo" type="xsd:decimal"/>
+<xsd:element name="descuento_oferta" type="xsd:decimal"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="DetalleArray">
+<xsd:complexContent>
+<xsd:restriction base="SOAP-ENC:Array">
+<xsd:attribute ref="SOAP-ENC:arrayType" wsdl:arrayType="tns:DetalleData[]"/>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+<xsd:complexType name="ImpuestoData">
+<xsd:all>
+<xsd:element name="identificador_impuesto" type="xsd:string"/>
+<xsd:element name="comprobante" type="xsd:string"/>
+<xsd:element name="abreviatura" type="xsd:string"/>
+<xsd:element name="total_percepcion" type="xsd:decimal"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="ImpuestoArray">
+<xsd:complexContent>
+<xsd:restriction base="SOAP-ENC:Array">
+<xsd:attribute ref="SOAP-ENC:arrayType" wsdl:arrayType="tns:ImpuestoData[]"/>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+<xsd:complexType name="DatosExportacionComprobantes">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+<xsd:element name="fecha_desde" type="xsd:string"/>
+<xsd:element name="fecha_hasta" type="xsd:string"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="RespuestaExportacionComprobantes">
+<xsd:array>
+<xsd:element name="estado" type="xsd:boolean"/>
+<xsd:element name="error" type="xsd:string"/>
+<xsd:element name="mensaje" type="xsd:string"/>
+<xsd:element name="cabecera" type="tns:CabeceraArray"/>
+<xsd:element name="detalle" type="tns:DetalleArray"/>
+<xsd:element name="impuestos" type="tns:ImpuestoArray"/>
+</xsd:array>
+</xsd:complexType>
+<xsd:complexType name="DatosConsultarPrecioMultiples">
+<xsd:all>
+<xsd:element name="usuario" type="xsd:string"/>
+<xsd:element name="clave" type="xsd:string"/>
+<xsd:element name="token" type="xsd:string" default="449325ac53d048b4ce47a85693cd7217"/>
+<xsd:element name="productos" type="tns:productosArray"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="ProductoPrecioDetalle">
+<xsd:all>
+<xsd:element name="codigo_barra" type="xsd:string"/>
+<xsd:element name="costo" type="xsd:decimal"/>
+<xsd:element name="iva" type="xsd:decimal"/>
+<xsd:element name="costo_sin_iva" type="xsd:decimal"/>
+<xsd:element name="descuento_oferta" type="xsd:decimal"/>
+<xsd:element name="costo_oferta" type="xsd:decimal"/>
+<xsd:element name="costo_oferta_sin_iva" type="xsd:decimal"/>
+<xsd:element name="mensaje" type="xsd:string"/>
+<xsd:element name="producto_nombre" type="xsd:string"/>
+<xsd:element name="existencia" type="xsd:string"/>
+<xsd:element name="unidades_minimas" type="xsd:integer"/>
+</xsd:all>
+</xsd:complexType>
+<xsd:complexType name="ProductoPrecioDetalleArray">
+<xsd:complexContent>
+<xsd:restriction base="SOAP-ENC:Array">
+<xsd:attribute ref="SOAP-ENC:arrayType" wsdl:arrayType="tns:ProductoPrecioDetalle[]"/>
+</xsd:restriction>
+</xsd:complexContent>
+</xsd:complexType>
+<xsd:complexType name="RespuestaConsultarPrecioMultiples">
+<xsd:all>
+<xsd:element name="estado" type="xsd:boolean"/>
+<xsd:element name="error" type="xsd:string"/>
+<xsd:element name="productos_no_encontrados" type="tns:productosArray"/>
+<xsd:element name="productos" type="tns:ProductoPrecioDetalleArray"/>
+<xsd:element name="observaciones" type="xsd:string"/>
+</xsd:all>
+</xsd:complexType>
+</xsd:schema>
+</types>
+<message name="ConsultarExistenciaRequest">
+<part name="DatosConsultarExistencia" type="tns:DatosConsultarExistencia"/>
+</message>
+<message name="ConsultarExistenciaResponse">
+<part name="return" type="tns:RespuestaConsultarExistencia"/>
+</message>
+<message name="AgregarProductoCarritoRequest">
+<part name="DatosAgregarProductoCarrito" type="tns:DatosAgregarProductoCarrito"/>
+</message>
+<message name="AgregarProductoCarritoResponse">
+<part name="return" type="tns:RespuestaAgregarProductoCarrito"/>
+</message>
+<message name="ConsultarPrecioRequest">
+<part name="DatosConsultarPrecio" type="tns:DatosConsultarPrecio"/>
+</message>
+<message name="ConsultarPrecioResponse">
+<part name="return" type="tns:RespuestaConsultarPrecio"/>
+</message>
+<message name="BuscarClienteRequest">
+<part name="DatosBuscarCliente" type="tns:DatosBuscarCliente"/>
+</message>
+<message name="BuscarClienteResponse">
+<part name="return" type="tns:RespuestaBuscarCliente"/>
+</message>
+<message name="ConsultarCondicionRequest">
+<part name="DatosConsultarCondicion" type="tns:DatosConsultarCondicion"/>
+</message>
+<message name="ConsultarCondicionResponse">
+<part name="return" type="tns:RespuestaConsultarCondicion"/>
+</message>
+<message name="ConsultarRepartosRequest">
+<part name="DatosConsultarRepartos" type="tns:DatosConsultarRepartos"/>
+</message>
+<message name="ConsultarRepartosResponse">
+<part name="return" type="tns:RespuestaConsultarRepartos"/>
+</message>
+<message name="AgregarProductosWSRequest">
+<part name="DatosAgregarProductosWS" type="tns:DatosAgregarProductosWS"/>
+</message>
+<message name="AgregarProductosWSResponse">
+<part name="return" type="tns:RespuestaAgregarProductosWS"/>
+</message>
+<message name="ConsultarDatosClienteRequest">
+<part name="DatosConsultarDatosCliente" type="tns:DatosConsultarDatosCliente"/>
+</message>
+<message name="ConsultarDatosClienteResponse">
+<part name="return" type="tns:RespuestaConsultarDatosCliente"/>
+</message>
+<message name="SolicitarPedidoRequest">
+<part name="DatosSolicitarPedido" type="tns:DatosSolicitarPedido"/>
+</message>
+<message name="SolicitarPedidoResponse">
+<part name="return" type="tns:RespuestaSolicitarPedido"/>
+</message>
+<message name="ExportacionComprobantesRequest">
+<part name="DatosExportacionComprobantes" type="tns:DatosExportacionComprobantes"/>
+</message>
+<message name="ExportacionComprobantesResponse">
+<part name="return" type="tns:RespuestaExportacionComprobantes"/>
+</message>
+<message name="ConsultarPrecioMultiplesRequest">
+<part name="DatosConsultarPrecioMultiples" type="tns:DatosConsultarPrecioMultiples"/>
+</message>
+<message name="ConsultarPrecioMultiplesResponse">
+<part name="return" type="tns:RespuestaConsultarPrecioMultiples"/>
+</message>
+<portType name="WEB SERVICE COFARSUR PortType">
+<operation name="ConsultarExistencia">
+<documentation>La siguiente funcion recibe usuario (string), password (string), codigo de barra (string), codigo_cofarsur (int), codigo_alfabeta (int), troquel (int) para obtener la existencia del producto en 3 estados: 1 -> En Stock 2 -> Stock Critico 3 -> En Falta </documentation>
+<input message="tns:ConsultarExistenciaRequest"/>
+<output message="tns:ConsultarExistenciaResponse"/>
+</operation>
+<operation name="AgregarProductoCarrito">
+<documentation>La siguiente funcion recibe usuario (string), password (string), codigo de barra (string), codigo_cofarsur (int), codigo_alfabeta (int), troquel (int), Cantidad (int), oferta_id (int Por ahora NULL): Retorna true si se agrego correctamente al carrito del cliente, false si ocurrio algun error durante la operacion. </documentation>
+<input message="tns:AgregarProductoCarritoRequest"/>
+<output message="tns:AgregarProductoCarritoResponse"/>
+</operation>
+<operation name="ConsultarPrecio">
+<documentation>La siguiente funcion recibe usuario (string), password (string), codigo de barra (string), codigo_cofarsur (int), codigo_alfabeta (int), troquel (int) para obtener el costo del producto, el dto de oferta, el costo con oferta </documentation>
+<input message="tns:ConsultarPrecioRequest"/>
+<output message="tns:ConsultarPrecioResponse"/>
+</operation>
+<operation name="BuscarCliente">
+<documentation>La siguiente funcion recibe usuario (string), password (string), codigo de barra (string), codigo_cofarsur (int), codigo_alfabeta (int), troquel (int) para obtener el costo del producto, el dto de oferta, el costo con oferta </documentation>
+<input message="tns:BuscarClienteRequest"/>
+<output message="tns:BuscarClienteResponse"/>
+</operation>
+<operation name="ConsultarCondicion">
+<documentation>La siguiente funcion recibe usuario (string), password (string), para obtener las condiciones del cliente </documentation>
+<input message="tns:ConsultarCondicionRequest"/>
+<output message="tns:ConsultarCondicionResponse"/>
+</operation>
+<operation name="ConsultarRepartos">
+<documentation>La siguiente funcion recibe usuario (string), password (string), para obtener los repartos disponibles </documentation>
+<input message="tns:ConsultarRepartosRequest"/>
+<output message="tns:ConsultarRepartosResponse"/>
+</operation>
+<operation name="AgregarProductosWS">
+<documentation>La siguiente funcion recibe usuario (string), password (string), codigo de barra (string), troquel (int), Cantidad (int): Retorna productos en falta, false si ocurrio algun error durante la operacion. </documentation>
+<input message="tns:AgregarProductosWSRequest"/>
+<output message="tns:AgregarProductosWSResponse"/>
+</operation>
+<operation name="ConsultarDatosCliente">
+<documentation>La siguiente funcion recibe usuario (string), password (string): Retorna datos de cliente. </documentation>
+<input message="tns:ConsultarDatosClienteRequest"/>
+<output message="tns:ConsultarDatosClienteResponse"/>
+</operation>
+<operation name="SolicitarPedido">
+<documentation>La siguiente funcion recibe usuario (string), password (string), productos (productosArray), reparto (boolean).Si reparto = true selecciona reparto como mÃ©todo de entrega, caso contrario selecciona mostrador. Retorna productos en falta, productos inhabilitados para facturar, productos no encontrados, observaciones y detalle de la entrega, false si ocurrio algun error durante la operacion. </documentation>
+<input message="tns:SolicitarPedidoRequest"/>
+<output message="tns:SolicitarPedidoResponse"/>
+</operation>
+<operation name="ExportacionComprobantes">
+<documentation>La siguiente funcion recibe: usuario (string), password (string), fecha_desde (string format dd/mm/yyyy), fecha_hasta (format dd/mm/yyyy): Retorna comprobantes divididos por cabecera, detalle e impuestos, false si ocurrio algun error durante la operacion.: El intervalo de fechas debera ser menor o igual a 7 dias </documentation>
+<input message="tns:ExportacionComprobantesRequest"/>
+<output message="tns:ExportacionComprobantesResponse"/>
+</operation>
+<operation name="ConsultarPrecioMultiples">
+<documentation>La siguiente funcion recibe usuario (string), password (string), productos (productosArray) la cantidad colocar 1 y el troque no es tenido en cuenta Retorna productos no encontrados, observaciones y un array con el codigo de barra y el precio completo de cada producto.</documentation>
+<input message="tns:ConsultarPrecioMultiplesRequest"/>
+<output message="tns:ConsultarPrecioMultiplesResponse"/>
+</operation>
+</portType>
+<binding name="WEB SERVICE COFARSUR Binding" type="tns:WEB SERVICE COFARSUR PortType">
+<soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>
+<operation name="ConsultarExistencia">
+<soap:operation soapAction="urn:function#ConsultarExistencia" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="AgregarProductoCarrito">
+<soap:operation soapAction="urn:function#AgregarProductoCarrito" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="ConsultarPrecio">
+<soap:operation soapAction="urn:function#ConsultarPrecio" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="BuscarCliente">
+<soap:operation soapAction="urn:function#BuscarCliente" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="ConsultarCondicion">
+<soap:operation soapAction="urn:function#ConsultarCondicion" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="ConsultarRepartos">
+<soap:operation soapAction="urn:function#ConsultarRepartos" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="AgregarProductosWS">
+<soap:operation soapAction="urn:function#AgregarProductosWS" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="ConsultarDatosCliente">
+<soap:operation soapAction="urn:function#ConsultarDatosCliente" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="SolicitarPedido">
+<soap:operation soapAction="urn:function#SolicitarPedido" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="ExportacionComprobantes">
+<soap:operation soapAction="urn:function#ExportacionComprobantes" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+<operation name="ConsultarPrecioMultiples">
+<soap:operation soapAction="urn:function#ConsultarPrecioMultiples" style="rpc"/>
+<input>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</input>
+<output>
+<soap:body use="encoded" namespace="urn:/ws" encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"/>
+</output>
+</operation>
+</binding>
+<service name="WEB SERVICE COFARSUR ">
+<port name="WEB SERVICE COFARSUR Port" binding="tns:WEB SERVICE COFARSUR Binding">
+<soap:address location="https://www.cofarsur.net/ws"/>
+</port>
+</service>
+</definitions>

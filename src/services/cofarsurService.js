@@ -17,7 +17,6 @@ function resolveDate(key, query, defaults) {
 
 function requireCredential(value, name) {
   if (typeof value === 'string' && value.trim()) return value.trim();
-
   const error = new Error(`Debe indicar ${name} mediante query o variables de entorno`);
   error.status = 400;
   throw error;
@@ -68,6 +67,7 @@ function normalizeResponse(response) {
     };
   }
 
+  // toleramos mayúsculas/minúsculas
   const estado = response.estado ?? response.Estado ?? false;
   const mensaje = response.mensaje ?? response.Mensaje;
   const error = response.error ?? response.Error;

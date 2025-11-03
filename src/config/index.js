@@ -1,6 +1,6 @@
 import 'dotenv/config';
 
-const config = {
+const cfg = {
   env: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT) || 3000,
   providers: {
@@ -9,21 +9,34 @@ const config = {
         process.env.SUIZO_WSDL_URL ??
         'http://pruebas.suizoargentina.com.ar/webservice/wspedidos2.wsdl',
       soapMethod: process.env.SUIZO_SOAP_METHOD ?? 'ConsultarFacturacion',
-      responseField:
-        process.env.SUIZO_RESPONSE_FIELD ?? 'ConsultarFacturacionResult',
+      responseField: process.env.SUIZO_RESPONSE_FIELD ?? 'ConsultarFacturacionResult',
       empresa: process.env.SUIZO_EMPRESA ? Number(process.env.SUIZO_EMPRESA) : 1,
       usuario: process.env.SUIZO_USUARIO ?? 'webservice',
       clave: process.env.SUIZO_CLAVE ?? '123456',
       grupo: process.env.SUIZO_GRUPO ?? 'C',
-      cuenta: process.env.SUIZO_CUENTA
-        ? Number(process.env.SUIZO_CUENTA)
-        : undefined
+      cuenta: process.env.SUIZO_CUENTA ? Number(process.env.SUIZO_CUENTA) : undefined,
+      endpoint: process.env.SUIZO_ENDPOINT,
+      forceSoap12Headers: process.env.SUIZO_FORCE_SOAP12_HEADERS === 'true'
     },
+
     cofarsur: {
-      apiUrl: process.env.COFARSUR_API_URL,
+      // Remoto
+      wsdlUrl: process.env.COFARSUR_WSDL_URL || null,
+      wsdlUrlAlt1: process.env.COFARSUR_WSDL_URL_ALT1 || null,
+      wsdlUrlAlt2: process.env.COFARSUR_WSDL_URL_ALT2 || null,
+      wsdlUrlAlt3: process.env.COFARSUR_WSDL_URL_ALT3 || null,
+      // Local (archivo) — si no hay WSDL público
+      wsdlFile: process.env.COFARSUR_WSDL_FILE || null,
+
+      endpoint: process.env.COFARSUR_ENDPOINT || 'https://www.cofarsur.net/ws',
+      soapMethod: 'ExportacionComprobantes',
+      responseField: 'return',
+      timeout: process.env.COFARSUR_TIMEOUT ? Number(process.env.COFARSUR_TIMEOUT) : 20000,
+
       usuario: process.env.COFARSUR_USUARIO,
       clave: process.env.COFARSUR_CLAVE,
       token: process.env.COFARSUR_TOKEN,
+
       maxRangeDays: process.env.COFARSUR_MAX_RANGE_DAYS
         ? Number(process.env.COFARSUR_MAX_RANGE_DAYS)
         : 6
@@ -31,4 +44,4 @@ const config = {
   }
 };
 
-export default config;
+export default cfg;

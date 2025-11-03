@@ -94,22 +94,7 @@ Variables relevantes en `.env`:
 # Configuración general
 PORT=3000
 
-# Proveedor Suizo
-SUIZO_WSDL_URL=...
-SUIZO_SOAP_METHOD=ConsultarFacturacion
-SUIZO_RESPONSE_FIELD=ConsultarFacturacionResult
-SUIZO_EMPRESA=1
-SUIZO_USUARIO=webservice
-SUIZO_CLAVE=123456
-SUIZO_GRUPO=C
-SUIZO_CUENTA=123456
 
-# Proveedor Cofarsur
-COFARSUR_API_URL=https://ejemplo.cofarsur.com/ws/ExportacionComprobantes
-COFARSUR_USUARIO=usuario
-COFARSUR_CLAVE=clave
-COFARSUR_TOKEN=token
-COFARSUR_MAX_RANGE_DAYS=6
 ```
 
 ## Arquitectura
