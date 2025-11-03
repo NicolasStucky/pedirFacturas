@@ -40,6 +40,21 @@ const cfg = {
       maxRangeDays: process.env.COFARSUR_MAX_RANGE_DAYS
         ? Number(process.env.COFARSUR_MAX_RANGE_DAYS)
         : 6
+    },
+    monroe: {
+      baseUrl:
+        process.env.MONROE_BASE_URL ??
+        'https://servicios-test.monroeamericana.com.ar/api-cli/',
+      adeVersion: process.env.MONROE_ADE_VERSION ?? 'ade/1.0.0',
+      softwareKey: process.env.MONROE_SOFTWARE_KEY,
+      customerKey: process.env.MONROE_CUSTOMER_KEY,
+      customerReference: process.env.MONROE_CUSTOMER_REFERENCE,
+      tokenDurationMinutes: process.env.MONROE_TOKEN_DURATION
+        ? Number(process.env.MONROE_TOKEN_DURATION)
+        : undefined,
+      timeout: process.env.MONROE_TIMEOUT
+        ? Number(process.env.MONROE_TIMEOUT)
+        : undefined
     }
   }
 };
