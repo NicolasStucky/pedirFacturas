@@ -29,8 +29,7 @@ app.get('/', (_req, res) => {
       },
       Monroe : {
         comprobantes: '/api/providers/monroe/comprobantes',
-        comprobanteDetalle :
-          '/api/providers/monroe/checkers/:checkerId'
+        comprobanteDetalle : '/api/providers/monroe/comprobantes/:comprobanteId' // ✅
       }
     }
   });
