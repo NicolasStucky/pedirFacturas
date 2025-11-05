@@ -10,6 +10,10 @@ export const PROVIDERS = [
   {
     id: 'monroe',
     name: 'Monroe Americana'
+  },
+  {
+    id: 'kellerhoff',
+    name: 'Kellerhoff'
   }
 ];
 

@@ -55,6 +55,23 @@ const cfg = {
       timeout: process.env.MONROE_TIMEOUT
         ? Number(process.env.MONROE_TIMEOUT)
         : undefined
+    },
+
+    kellerhoff: {
+      baseUrl: process.env.KELLERHOFF_BASE_URL,
+      email: process.env.KELLERHOFF_EMAIL,
+      password: process.env.KELLERHOFF_PASSWORD,
+      pharmacyReference:
+        process.env.KELLERHOFF_PHARMACY_REFERENCE != null &&
+        process.env.KELLERHOFF_PHARMACY_REFERENCE !== ''
+          ? Number(process.env.KELLERHOFF_PHARMACY_REFERENCE)
+          : undefined,
+      timeout: process.env.KELLERHOFF_TIMEOUT
+        ? Number(process.env.KELLERHOFF_TIMEOUT)
+        : undefined,
+      tokenTtlHours: process.env.KELLERHOFF_TOKEN_TTL_HOURS
+        ? Number(process.env.KELLERHOFF_TOKEN_TTL_HOURS)
+        : undefined
     }
   }
 };
