@@ -109,12 +109,70 @@ Parámetros marcados con `*` son obligatorios únicamente si no se configuraron 
 
 El endpoint de detalle (`/comprobantes/:comprobanteId`) espera en la ruta el identificador completo del comprobante (por ejemplo `FC-A-1103-01522760`) y reutiliza las mismas credenciales/query parameters para autenticarse.
 
+### Proveedor Kellerhoff
+
+- `POST /api/providers/kellerhoff/products`
+
+Envía en el cuerpo de la petición (`application/json`) el listado de productos a consultar junto con la farmacia asociada. Ejemplo:
+
+```json
+{
+  "pharmacy": { "reference": 8229 },
+  "products": [
+    { "codebar": "7797811099431", "quantity": 3 },
+    { "codebar": "7795327060082", "quantity": 1 }
+  ]
+}
+```
+
+El servicio obtiene automáticamente el token de Kellerhoff utilizando el endpoint `quantiocloud/token` y lo reutiliza hasta su caducidad (12 horas por defecto).
+Podés sobreescribir las credenciales configuradas en el entorno enviando `email` y `password` en el cuerpo de la petición.
+El campo `pharmacy.reference` es obligatorio si no se configuró `KELLERHOFF_PHARMACY_REFERENCE`.
+La respuesta devuelve el payload enviado y el objeto retornado por Kellerhoff (`status`, `message`, `data.productos`, etc.).
+
 ## Configuración
 
 Variables relevantes en `.env`:
 
 ```bash
-# Configuración genera
+# Generales
+PORT=3000
+
+# Suizo
+SUIZO_WSDL_URL=
+SUIZO_SOAP_METHOD=
+SUIZO_RESPONSE_FIELD=
+SUIZO_EMPRESA=
+SUIZO_USUARIO=
+SUIZO_CLAVE=
+SUIZO_GRUPO=
+SUIZO_CUENTA=
+
+# Cofarsur
+COFARSUR_WSDL_URL=
+COFARSUR_USUARIO=
+COFARSUR_CLAVE=
+COFARSUR_TOKEN=
+COFARSUR_MAX_RANGE_DAYS=6
+
+# Monroe Americana
+MONROE_BASE_URL=
+MONROE_ADE_VERSION=ade/1.0.0
+MONROE_SOFTWARE_KEY=
+MONROE_CUSTOMER_KEY=
+MONROE_CUSTOMER_REFERENCE=
+MONROE_TOKEN_DURATION=
+
+# Kellerhoff
+KELLERHOFF_BASE_URL=
+KELLERHOFF_EMAIL=
+KELLERHOFF_PASSWORD=
+KELLERHOFF_PHARMACY_REFERENCE=
+# Opcionales
+# KELLERHOFF_TIMEOUT=15000
+# KELLERHOFF_TOKEN_TTL_HOURS=12
+```
+
 ## Arquitectura
 
 - **Express** como framework HTTP.
@@ -122,6 +180,7 @@ Variables relevantes en `.env`:
 - **Configuración centralizada** en `src/config/index.js`, alimentada por variables de entorno.
 - **Cliente SOAP** (`src/clients/suizoClient.js`) para interpretar la respuesta XML del proveedor Suizo.
 - **Cliente HTTP JSON** (`src/clients/cofarsurClient.js`) para interactuar con Cofarsur siguiendo la estructura solicitada por su documentación.
+- **Cliente HTTP JSON** (`src/clients/kellerhoffClient.js`) para autenticarse y consultar productos en Kellerhoff.
 - **Validaciones de fechas** en `src/utils/date.js` para garantizar el rango máximo definido por cada proveedor.
 
 ## Próximos pasos sugeridos

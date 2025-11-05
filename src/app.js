@@ -29,7 +29,10 @@ app.get('/', (_req, res) => {
       },
       Monroe : {
         comprobantes: '/api/providers/monroe/comprobantes',
-        comprobanteDetalle : '/api/providers/monroe/comprobantes/detalle' // ✅
+        comprobanteDetalle : '/api/providers/monroe/comprobantes/:comprobanteId' // ✅
+      },
+      kellerhoff: {
+        products: '/api/providers/kellerhoff/products'
       }
     }
   });
