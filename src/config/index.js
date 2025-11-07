@@ -29,9 +29,6 @@ const cfg = {
     cofarsur: {
       // Remoto
       wsdlUrl: process.env.COFARSUR_WSDL_URL || null,
-      wsdlUrlAlt1: process.env.COFARSUR_WSDL_URL_ALT1 || null,
-      wsdlUrlAlt2: process.env.COFARSUR_WSDL_URL_ALT2 || null,
-      wsdlUrlAlt3: process.env.COFARSUR_WSDL_URL_ALT3 || null,
       // Local (archivo) — si no hay WSDL público
       wsdlFile: process.env.COFARSUR_WSDL_FILE || null,
 
