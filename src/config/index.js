@@ -3,6 +3,13 @@ import 'dotenv/config';
 const cfg = {
   env: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT) || 3000,
+  database: {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    name: process.env.DB_NAME,
+  },
   providers: {
     suizo: {
       wsdlUrl:
