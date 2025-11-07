@@ -15,8 +15,8 @@ const cfg = {
       wsdlUrl:
         process.env.SUIZO_WSDL_URL ??
         'https://ws.suizoargentina.com/webservice/wspedidos2.wsdl',
-      soapMethod: process.env.SUIZO_SOAP_METHOD ?? 'ConsultarFacturacion',
-      responseField: process.env.SUIZO_RESPONSE_FIELD ?? 'ConsultarFacturacionResult',
+      soapMethod: process.env.SUIZO_SOAP_METHOD ?? 'Facturas',
+      responseField: process.env.SUIZO_RESPONSE_FIELD ?? 'FacturasResult',
       empresa: process.env.SUIZO_EMPRESA ? Number(process.env.SUIZO_EMPRESA) : 1,
       usuario: process.env.SUIZO_USUARIO ?? 'webservice',
       clave: process.env.SUIZO_CLAVE ?? '123456',

@@ -91,6 +91,8 @@ Parámetros soportados (query string):
 
 Los endpoints devuelven el payload enviado al servicio de Suizo y la respuesta interpretada (XML crudo y objeto parseado) para facilitar el consumo en otras capas de la aplicación.
 
+> Internamente la integración utiliza la operación SOAP `Facturas` (campo de respuesta `FacturasResult`). Si el proveedor expone un método alternativo puedes sobreescribirlo con las variables `SUIZO_SOAP_METHOD` y `SUIZO_RESPONSE_FIELD`.
+
 ### Proveedor Cofarsur
 
 - `GET /api/providers/cofarsur/:branch/comprobantes`
