@@ -13,6 +13,8 @@ Backend en Node.js y Express para centralizar las consultas de facturación de d
 npm install
 ```
 
+> Si al iniciar el proyecto aparece el error `Cannot find package 'mysql2'`, ejecuta nuevamente `npm install` para descargar la dependencia agregada para la conexión a la base de datos.
+
 Cree un archivo `.env` con las credenciales necesarias para los proveedores disponibles. Consulte la sección de [Configuración](#configuración) para conocer las variables esperadas.
 
 ## Ejecución
@@ -31,6 +33,28 @@ npm start
 
 La aplicación expone por defecto los endpoints en `http://localhost:3000`.
 
+## Credenciales por sucursal
+
+Las credenciales de cada proveedor ahora se obtienen dinámicamente desde una base de datos centralizada. Configura la conexión en el archivo `.env`:
+
+```bash
+DB_HOST=maglev.proxy.rlwy.net
+DB_PORT=50180
+DB_USER=root
+DB_PASS=GivkhAzEbIDNLlRnBbyhcCXnacdUlWnu
+DB_NAME=railway
+```
+
+Cada endpoint de proveedor requiere que indiques la sucursal directamente en la ruta, por ejemplo `/api/providers/monroe/SA1/comprobantes`. La API buscará en la tabla `credenciales_droguerias` de la base de datos las credenciales correspondientes a ese código de sucursal.
+
+### Endpoints externos utilizados
+
+Los servicios se consumen contra los endpoints oficiales de cada proveedor:
+
+- **Suizo**: `https://ws.suizoargentina.com/webservice/wspedidos2.wsdl`
+- **Monroe Americana**: `https://servicios.monroeamericana.com.ar/api-cli/`
+- **Cofarsur**: `https://www.cofarsur.net/ws`
+
 ### Página principal
 
 - `GET /`
@@ -45,9 +69,11 @@ Devuelve un mensaje de bienvenida junto con un resumen de los endpoints disponib
 
 ### Proveedor Suizo
 
-- `GET /api/providers/suizo/invoices/totals`
-- `GET /api/providers/suizo/invoices/details`
-- `GET /api/providers/suizo/invoices/perceptions`
+- `GET /api/providers/suizo/:branch/invoices/totals`
+- `GET /api/providers/suizo/:branch/invoices/details`
+- `GET /api/providers/suizo/:branch/invoices/perceptions`
+
+Donde `:branch` representa el código de sucursal configurado en la base de datos (por ejemplo `SA1`).
 
 Parámetros soportados (query string):
 
@@ -67,10 +93,12 @@ Los endpoints devuelven el payload enviado al servicio de Suizo y la respuesta i
 
 ### Proveedor Cofarsur
 
-- `GET /api/providers/cofarsur/comprobantes`
-- `GET /api/providers/cofarsur/comprobantes/cabecera`
-- `GET /api/providers/cofarsur/comprobantes/detalle`
-- `GET /api/providers/cofarsur/comprobantes/impuestos`
+- `GET /api/providers/cofarsur/:branch/comprobantes`
+- `GET /api/providers/cofarsur/:branch/comprobantes/cabecera`
+- `GET /api/providers/cofarsur/:branch/comprobantes/detalle`
+- `GET /api/providers/cofarsur/:branch/comprobantes/impuestos`
+
+Donde `:branch` corresponde al código de sucursal cargado en la tabla `credenciales_droguerias`.
 
 Parámetros soportados (query string):
 
@@ -88,8 +116,10 @@ La respuesta mantiene la información de estado (`estado`, `mensaje`, `error`) j
 
 ### Proveedor Monroe Americana
 
-- `GET /api/providers/monroe/comprobantes`
-- `GET /api/providers/monroe/comprobantes/:comprobanteId`
+- `GET /api/providers/monroe/:branch/comprobantes`
+- `GET /api/providers/monroe/:branch/comprobantes/:comprobanteId`
+
+Recuerda sustituir `:branch` por la sucursal deseada (por ejemplo `SA2`).
 
 Parámetros soportados en la consulta general (`/comprobantes`):
 
@@ -137,6 +167,13 @@ Variables relevantes en `.env`:
 ```bash
 # Generales
 PORT=3000
+
+# Base de datos de credenciales
+DB_HOST=
+DB_PORT=
+DB_USER=
+DB_PASS=
+DB_NAME=
 
 # Suizo
 SUIZO_WSDL_URL=

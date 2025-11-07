@@ -3,11 +3,18 @@ import 'dotenv/config';
 const cfg = {
   env: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT) || 3000,
+  database: {
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+    name: process.env.DB_NAME,
+  },
   providers: {
     suizo: {
       wsdlUrl:
         process.env.SUIZO_WSDL_URL ??
-        'http://pruebas.suizoargentina.com.ar/webservice/wspedidos2.wsdl',
+        'https://ws.suizoargentina.com/webservice/wspedidos2.wsdl',
       soapMethod: process.env.SUIZO_SOAP_METHOD ?? 'ConsultarFacturacion',
       responseField: process.env.SUIZO_RESPONSE_FIELD ?? 'ConsultarFacturacionResult',
       empresa: process.env.SUIZO_EMPRESA ? Number(process.env.SUIZO_EMPRESA) : 1,
@@ -15,7 +22,7 @@ const cfg = {
       clave: process.env.SUIZO_CLAVE ?? '123456',
       grupo: process.env.SUIZO_GRUPO ?? 'C',
       cuenta: process.env.SUIZO_CUENTA ? Number(process.env.SUIZO_CUENTA) : undefined,
-      endpoint: process.env.SUIZO_ENDPOINT,
+      endpoint: process.env.SUIZO_ENDPOINT ?? undefined,
       forceSoap12Headers: process.env.SUIZO_FORCE_SOAP12_HEADERS === 'true'
     },
 
@@ -44,7 +51,7 @@ const cfg = {
     monroe: {
       baseUrl:
         process.env.MONROE_BASE_URL ??
-        'https://servicios-test.monroeamericana.com.ar/api-cli/',
+        'https://servicios.monroeamericana.com.ar/api-cli/',
       adeVersion: process.env.MONROE_ADE_VERSION ?? 'ade/1.0.0',
       softwareKey: process.env.MONROE_SOFTWARE_KEY,
       customerKey: process.env.MONROE_CUSTOMER_KEY,

@@ -7,7 +7,7 @@ import {
 
 export async function getCofarsurComprobantes(req, res, next) {
   try {
-    const result = await getComprobantes(req.query);
+    const result = await getComprobantes(req.params.branch, req.query);
     res.json(result);
   } catch (error) {
     next(error);
@@ -16,7 +16,7 @@ export async function getCofarsurComprobantes(req, res, next) {
 
 export async function getCofarsurComprobantesCabecera(req, res, next) {
   try {
-    const result = await getComprobantesCabecera(req.query);
+    const result = await getComprobantesCabecera(req.params.branch, req.query);
     res.json(result);
   } catch (error) {
     next(error);
@@ -25,7 +25,7 @@ export async function getCofarsurComprobantesCabecera(req, res, next) {
 
 export async function getCofarsurComprobantesDetalle(req, res, next) {
   try {
-    const result = await getComprobantesDetalle(req.query);
+    const result = await getComprobantesDetalle(req.params.branch, req.query);
     res.json(result);
   } catch (error) {
     next(error);
@@ -34,7 +34,7 @@ export async function getCofarsurComprobantesDetalle(req, res, next) {
 
 export async function getCofarsurComprobantesImpuestos(req, res, next) {
   try {
-    const result = await getComprobantesImpuestos(req.query);
+    const result = await getComprobantesImpuestos(req.params.branch, req.query);
     res.json(result);
   } catch (error) {
     next(error);
