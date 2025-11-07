@@ -4,6 +4,7 @@ import {
   fetchComprobantes,
   login,
 } from '../clients/monroeClient.js';
+import { getBranchCredentials } from '../repositories/branchCredentialsRepository.js';
 import {
   ensureMaxRange,
   getDefaultRange,
@@ -30,10 +31,14 @@ function parseTokenDuration(value) {
   return asNumber;
 }
 
-function buildCredentials(query = {}) {
+function buildCredentials(query = {}, branchCredentials) {
   const providerConfig = config.providers?.monroe ?? {};
+  const branchMonroe = branchCredentials?.monroe ?? {};
   const softwareKey = normalizeString(
-    query.software_key ?? query.softwareKey ?? providerConfig.softwareKey
+    query.software_key ??
+      query.softwareKey ??
+      branchMonroe.softwareKey ??
+      providerConfig.softwareKey
   );
 
   if (!softwareKey) {
@@ -45,11 +50,15 @@ function buildCredentials(query = {}) {
   }
 
   const customerKey = normalizeString(
-    query.ecommerce_customer_key ?? query.customerKey ?? providerConfig.customerKey
+    query.ecommerce_customer_key ??
+      query.customerKey ??
+      branchMonroe.ecommerceKey ??
+      providerConfig.customerKey
   );
   const customerReference = normalizeString(
     query.ecommerce_customer_reference ??
       query.customerReference ??
+      branchMonroe.cuenta ??
       providerConfig.customerReference
   );
   const tokenDuration = parseTokenDuration(
@@ -188,14 +197,16 @@ function buildComprobantesParams(query = {}) {
   return params;
 }
 
-export async function getMonroeComprobantes(query = {}) {
-  const credentials = buildCredentials(query);
+export async function getMonroeComprobantes(branchCode, query = {}) {
+  const branchCredentials = await getBranchCredentials(branchCode);
+  const credentials = buildCredentials(query, branchCredentials);
   const params = buildComprobantesParams(query);
   const token = await getAccessToken(credentials);
   const response = await fetchComprobantes(params, token);
 
   return {
     provider: 'monroe',
+    branch: branchCredentials.branchCode,
     request: {
       params,
       credentials: sanitizeCredentials(credentials),
@@ -204,7 +215,7 @@ export async function getMonroeComprobantes(query = {}) {
   };
 }
 
-export async function getMonroeComprobanteDetalle(comprobanteId, query = {}) {
+export async function getMonroeComprobanteDetalle(branchCode, comprobanteId, query = {}) {
   const identifier = normalizeString(comprobanteId);
   if (!identifier) {
     const error = new Error(
@@ -214,12 +225,14 @@ export async function getMonroeComprobanteDetalle(comprobanteId, query = {}) {
     throw error;
   }
 
-  const credentials = buildCredentials(query);
+  const branchCredentials = await getBranchCredentials(branchCode);
+  const credentials = buildCredentials(query, branchCredentials);
   const token = await getAccessToken(credentials);
   const response = await fetchComprobanteDetalle(identifier, token);
 
   return {
     provider: 'monroe',
+    branch: branchCredentials.branchCode,
     request: {
       comprobanteId: identifier,
       credentials: sanitizeCredentials(credentials),

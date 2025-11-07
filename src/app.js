@@ -17,19 +17,19 @@ app.get('/', (_req, res) => {
       health: '/health',
       providers: '/api/providers',
       suizo: {
-        totals: '/api/providers/suizo/invoices/totals',
-        details: '/api/providers/suizo/invoices/details',
-        perceptions: '/api/providers/suizo/invoices/perceptions'
+        totals: '/api/providers/suizo/:branch/invoices/totals',
+        details: '/api/providers/suizo/:branch/invoices/details',
+        perceptions: '/api/providers/suizo/:branch/invoices/perceptions'
       },
       cofarsur: {
-        comprobantes: '/api/providers/cofarsur/comprobantes',
-        cabecera: '/api/providers/cofarsur/comprobantes/cabecera',
-        detalle: '/api/providers/cofarsur/comprobantes/detalle',
-        impuestos: '/api/providers/cofarsur/comprobantes/impuestos'
+        comprobantes: '/api/providers/cofarsur/:branch/comprobantes',
+        cabecera: '/api/providers/cofarsur/:branch/comprobantes/cabecera',
+        detalle: '/api/providers/cofarsur/:branch/comprobantes/detalle',
+        impuestos: '/api/providers/cofarsur/:branch/comprobantes/impuestos'
       },
-      Monroe : {
-        comprobantes: '/api/providers/monroe/comprobantes',
-        comprobanteDetalle : '/api/providers/monroe/comprobantes/detalle' // ✅
+      monroe: {
+        comprobantes: '/api/providers/monroe/:branch/comprobantes',
+        comprobanteDetalle: '/api/providers/monroe/:branch/comprobantes/:comprobanteId'
       },
       kellerhoff: {
         products: '/api/providers/kellerhoff/products'
