@@ -52,7 +52,7 @@ export async function getBranchCredentials(branchCode) {
     return cache.get(normalized);
   }
 
-  const pool = getPool();
+  const pool = await getPool();
   const [rows] = await pool.execute(
     `
       SELECT

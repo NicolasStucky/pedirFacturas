@@ -22,7 +22,7 @@ const cfg = {
       clave: process.env.SUIZO_CLAVE ?? '123456',
       grupo: process.env.SUIZO_GRUPO ?? 'C',
       cuenta: process.env.SUIZO_CUENTA ? Number(process.env.SUIZO_CUENTA) : undefined,
-      endpoint: process.env.SUIZO_ENDPOINT,
+      endpoint: process.env.SUIZO_ENDPOINT ?? undefined,
       forceSoap12Headers: process.env.SUIZO_FORCE_SOAP12_HEADERS === 'true'
     },
 

@@ -1,7 +1,20 @@
-import mysql from 'mysql2/promise';
 import config from '../config/index.js';
 
-let pool;
+let poolPromise;
+
+async function importMysql() {
+  try {
+    const mysqlModule = await import('mysql2/promise');
+    return mysqlModule.default ?? mysqlModule;
+  } catch (error) {
+    const err = new Error(
+      'No se encontró la dependencia "mysql2". Ejecuta "npm install" para instalarla antes de iniciar el servidor.'
+    );
+    err.status = 500;
+    err.cause = error;
+    throw err;
+  }
+}
 
 function resolvePoolConfig() {
   const db = config.database ?? {};
@@ -26,11 +39,15 @@ function resolvePoolConfig() {
   };
 }
 
-export function getPool() {
-  if (!pool) {
-    pool = mysql.createPool(resolvePoolConfig());
+export async function getPool() {
+  if (!poolPromise) {
+    poolPromise = (async () => {
+      const mysql = await importMysql();
+      return mysql.createPool(resolvePoolConfig());
+    })();
   }
-  return pool;
+
+  return poolPromise;
 }
 
 export default getPool;

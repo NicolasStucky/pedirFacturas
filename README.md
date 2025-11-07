@@ -13,6 +13,8 @@ Backend en Node.js y Express para centralizar las consultas de facturación de d
 npm install
 ```
 
+> Si al iniciar el proyecto aparece el error `Cannot find package 'mysql2'`, ejecuta nuevamente `npm install` para descargar la dependencia agregada para la conexión a la base de datos.
+
 Cree un archivo `.env` con las credenciales necesarias para los proveedores disponibles. Consulte la sección de [Configuración](#configuración) para conocer las variables esperadas.
 
 ## Ejecución
@@ -44,6 +46,14 @@ DB_NAME=railway
 ```
 
 Cada endpoint de proveedor requiere que indiques la sucursal directamente en la ruta, por ejemplo `/api/providers/monroe/SA1/comprobantes`. La API buscará en la tabla `credenciales_droguerias` de la base de datos las credenciales correspondientes a ese código de sucursal.
+
+### Endpoints externos utilizados
+
+Los servicios se consumen contra los endpoints oficiales de cada proveedor:
+
+- **Suizo**: `https://ws.suizoargentina.com/webservice/wspedidos2.wsdl`
+- **Monroe Americana**: `https://servicios.monroeamericana.com.ar/api-cli/`
+- **Cofarsur**: `https://www.cofarsur.net/ws`
 
 ### Página principal
 
