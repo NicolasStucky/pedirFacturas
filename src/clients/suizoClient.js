@@ -9,6 +9,59 @@ const PARSE_OPTIONS = {
   trim: true,
 };
 
+function pickResponseContainer(result, soapMethod, responseField) {
+  if (!result || typeof result !== 'object') return null;
+
+  const candidateKeys = [
+    responseField,
+    `${soapMethod}Result`,
+    'Result',
+    ...Object.keys(result),
+  ].filter(Boolean);
+
+  for (const key of candidateKeys) {
+    if (Object.prototype.hasOwnProperty.call(result, key) && result[key] != null) {
+      return { key, value: result[key] };
+    }
+  }
+
+  return null;
+}
+
+function extractXmlPayload(rawValue) {
+  if (rawValue == null) return null;
+
+  if (Buffer.isBuffer(rawValue)) {
+    return iconv.decode(rawValue, 'windows-1252');
+  }
+
+  if (typeof rawValue === 'string') {
+    return iconv.decode(Buffer.from(rawValue, 'binary'), 'windows-1252');
+  }
+
+  if (typeof rawValue === 'object') {
+    if (rawValue.$value != null) {
+      return extractXmlPayload(rawValue.$value);
+    }
+
+    if (rawValue.anyType != null) {
+      const anyType = Array.isArray(rawValue.anyType)
+        ? rawValue.anyType.find((item) => item != null)
+        : rawValue.anyType;
+      if (anyType != null) {
+        return extractXmlPayload(anyType);
+      }
+    }
+
+    const firstValue = Object.values(rawValue).find((value) => value != null);
+    if (firstValue != null) {
+      return extractXmlPayload(firstValue);
+    }
+  }
+
+  return null;
+}
+
 export async function fetchInvoices(payload) {
   const { suizo } = config.providers;
   const {
@@ -43,15 +96,26 @@ export async function fetchInvoices(payload) {
 
     // Ejecución
     const [result] = await client[`${soapMethod}Async`](payload);
-    const raw = result?.[responseField];
-    if (!raw) throw new Error('Respuesta inesperada del servicio Suizo');
+    const container = pickResponseContainer(result, soapMethod, responseField);
 
-    // Si viene como objeto con $value, extraer string
-    let xmlString = typeof raw === 'string' ? raw : raw?.$value;
-    if (!xmlString) throw new Error('No se encontró contenido XML en Result');
+    if (!container) {
+      const availableKeys = result && typeof result === 'object'
+        ? Object.keys(result)
+        : [];
+      const availableList = availableKeys.length ? availableKeys.join(', ') : 'ninguna';
+      const err = new Error(
+        `Respuesta inesperada del servicio Suizo: no se encontró un campo con XML (claves disponibles: ${availableList})`
+      );
+      err.status = 502;
+      throw err;
+    }
 
-    // Convertir desde Windows-1252 a UTF-8
-    xmlString = iconv.decode(Buffer.from(xmlString, 'binary'), 'windows-1252');
+    const xmlString = extractXmlPayload(container.value);
+    if (!xmlString) {
+      const err = new Error('No se encontró contenido XML en la respuesta del servicio Suizo');
+      err.status = 502;
+      throw err;
+    }
 
     // Parsear XML
     const parsedXml = await parseStringPromise(xmlString, PARSE_OPTIONS);
@@ -72,7 +136,7 @@ export async function fetchInvoices(payload) {
 
     return {
       method: soapMethod,
-      responseField,
+      responseField: container.key,
       rawXml: xmlString,
       parsed,
       cantidad: Array.isArray(parsed) ? parsed.length : undefined,

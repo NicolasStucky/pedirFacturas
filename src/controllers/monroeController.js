@@ -5,7 +5,7 @@ import {
 
 export async function listMonroeComprobantes(req, res, next) {
   try {
-    const result = await getMonroeComprobantes(req.query);
+    const result = await getMonroeComprobantes(req.params.branch, req.query);
     res.json(result);
   } catch (error) {
     next(error);
@@ -15,6 +15,7 @@ export async function listMonroeComprobantes(req, res, next) {
 export async function getMonroeComprobanteDetalleController(req, res, next) {
   try {
     const result = await getMonroeComprobanteDetalle(
+      req.params.branch,
       req.params.comprobanteId,
       req.query
     );

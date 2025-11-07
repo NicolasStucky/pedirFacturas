@@ -1,6 +1,7 @@
 import config from '../config/index.js';
 import { fetchComprobantes } from '../clients/cofarsurClient.js';
 import { ensureMaxRange, getDefaultRange } from '../utils/date.js';
+import { getBranchCredentials } from '../repositories/branchCredentialsRepository.js';
 
 function resolveDate(key, query, defaults) {
   const direct = query[key];
@@ -15,15 +16,19 @@ function resolveDate(key, query, defaults) {
   return undefined;
 }
 
-function requireCredential(value, name) {
+function requireCredential(value, name, branchCode) {
   if (typeof value === 'string' && value.trim()) return value.trim();
-  const error = new Error(`Debe indicar ${name} mediante query o variables de entorno`);
+  const suffix = branchCode ? ` para la sucursal ${branchCode}` : '';
+  const error = new Error(
+    `Debe indicar ${name}${suffix} mediante la base de credenciales o enviarlo en la query`
+  );
   error.status = 400;
   throw error;
 }
 
-function buildPayload(query) {
+function buildPayload(branchCredentials, query) {
   const providerConfig = config.providers?.cofarsur ?? {};
+  const branchCofarsur = branchCredentials?.cofarsur ?? {};
   const maxRangeDays = Number.isFinite(providerConfig.maxRangeDays)
     ? providerConfig.maxRangeDays
     : 6;
@@ -35,9 +40,21 @@ function buildPayload(query) {
 
   ensureMaxRange(fecha_desde, fecha_hasta, maxRangeDays);
 
-  const usuario = requireCredential(query.usuario ?? providerConfig.usuario, 'usuario');
-  const clave = requireCredential(query.clave ?? providerConfig.clave, 'clave');
-  const token = requireCredential(query.token ?? providerConfig.token, 'token');
+  const usuario = requireCredential(
+    query.usuario ?? branchCofarsur.usuario ?? providerConfig.usuario,
+    'usuario',
+    branchCredentials.branchCode
+  );
+  const clave = requireCredential(
+    query.clave ?? branchCofarsur.clave ?? providerConfig.clave,
+    'clave',
+    branchCredentials.branchCode
+  );
+  const token = requireCredential(
+    query.token ?? branchCofarsur.token ?? providerConfig.token,
+    'token',
+    branchCredentials.branchCode
+  );
 
   return {
     usuario,
@@ -87,13 +104,15 @@ function normalizeResponse(response) {
   };
 }
 
-async function executeCofarsurRequest(query) {
-  const payload = buildPayload(query);
+async function executeCofarsurRequest(branchCode, query) {
+  const branchCredentials = await getBranchCredentials(branchCode);
+  const payload = buildPayload(branchCredentials, query);
   const response = await fetchComprobantes(payload);
   const normalized = normalizeResponse(response);
 
   return {
     provider: 'cofarsur',
+    branch: branchCredentials.branchCode,
     request: payload,
     response: normalized
   };
@@ -106,22 +125,22 @@ function withSelection(result, field) {
   };
 }
 
-export function getComprobantes(query) {
-  return executeCofarsurRequest(query);
+export function getComprobantes(branchCode, query) {
+  return executeCofarsurRequest(branchCode, query);
 }
 
-export async function getComprobantesCabecera(query) {
-  const result = await executeCofarsurRequest(query);
+export async function getComprobantesCabecera(branchCode, query) {
+  const result = await executeCofarsurRequest(branchCode, query);
   return withSelection(result, 'cabecera');
 }
 
-export async function getComprobantesDetalle(query) {
-  const result = await executeCofarsurRequest(query);
+export async function getComprobantesDetalle(branchCode, query) {
+  const result = await executeCofarsurRequest(branchCode, query);
   return withSelection(result, 'detalle');
 }
 
-export async function getComprobantesImpuestos(query) {
-  const result = await executeCofarsurRequest(query);
+export async function getComprobantesImpuestos(branchCode, query) {
+  const result = await executeCofarsurRequest(branchCode, query);
   return withSelection(result, 'impuestos');
 }
 
