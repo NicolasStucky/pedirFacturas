@@ -1,6 +1,7 @@
 import config from '../config/index.js';
 import { fetchInvoices } from '../clients/suizoClient.js';
 import { ensureMaxRange, getDefaultRange } from '../utils/date.js';
+import { getBranchCredentials } from '../repositories/branchCredentialsRepository.js';
 
 const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
 
@@ -13,19 +14,25 @@ const ITEMS_MAP = {
   perceptions: 'P',
 };
 
-function resolveTcGrupo(tnCuentaFromQuery, tnCuentaFromEnv, tcGrupoOverride) {
+function resolveTcGrupo(
+  tnCuentaFromQuery,
+  tnCuentaFromBranch,
+  tnCuentaFromEnv,
+  tcGrupoOverride
+) {
   // Si el usuario forzó tcGrupo por query, lo respetamos si es válido
   if (tcGrupoOverride) {
     const v = String(tcGrupoOverride).toUpperCase();
     if (v === 'C' || v === 'G') return v;
   }
   // Si hay cuenta (query o env) => por defecto 'C' (Cuenta). Si no, 'G' (Grupo)
-  if (tnCuentaFromQuery ?? tnCuentaFromEnv) return 'C';
+  if (tnCuentaFromQuery ?? tnCuentaFromBranch ?? tnCuentaFromEnv) return 'C';
   return 'G';
 }
 
-function buildBasePayload(query, itemsKey) {
+function buildBasePayload(branchCredentials, query, itemsKey) {
   const { suizo } = config.providers;
+  const branchSuizo = branchCredentials?.suizo ?? {};
 
   const {
     tcDesde: rawDesde,
@@ -45,13 +52,18 @@ function buildBasePayload(query, itemsKey) {
   ensureMaxRange(tcDesde, tcHasta, MAX_RANGE_DAYS);
 
   // Determinar grupo y cuenta
-  const cuentaFinal = (tnCuenta ?? suizo.cuenta);
-  const grupoFinal = resolveTcGrupo(tnCuenta, suizo.cuenta, tcGrupo);
+  const cuentaFinal = tnCuenta ?? branchSuizo.cuenta ?? suizo.cuenta;
+  const grupoFinal = resolveTcGrupo(
+    tnCuenta,
+    branchSuizo.cuenta,
+    suizo.cuenta,
+    tcGrupo
+  );
 
   const payload = {
     tnEmpresa: tnEmpresa ? Number(tnEmpresa) : Number(suizo.empresa),
-    tcUsuario: tcUsuario ?? suizo.usuario,
-    tcClave:   tcClave   ?? suizo.clave,
+    tcUsuario: tcUsuario ?? branchSuizo.usuario ?? suizo.usuario,
+    tcClave:   tcClave   ?? branchSuizo.clave   ?? suizo.clave,
     tcGrupo:   grupoFinal,  // 'C' o 'G'
     tcDesde,
     tcHasta,
@@ -60,7 +72,9 @@ function buildBasePayload(query, itemsKey) {
   // Si grupo es 'C' y no tenemos cuenta => error claro
   if (grupoFinal === 'C') {
     if (cuentaFinal === undefined || cuentaFinal === '' || isNaN(Number(cuentaFinal))) {
-      const err = new Error('Para tcGrupo="C" (Cuenta) debe indicar tnCuenta (query) o SUIZO_CUENTA en .env.');
+      const err = new Error(
+        'Para tcGrupo="C" (Cuenta) debe indicar tnCuenta (query) o contar con una cuenta configurada para la sucursal.'
+      );
       err.status = 400;
       throw err;
     }
@@ -76,28 +90,30 @@ function buildBasePayload(query, itemsKey) {
   return payload;
 }
 
-async function executeSuizoRequest(query, itemsKey) {
-  const payload = buildBasePayload(query, itemsKey);
+async function executeSuizoRequest(branchCode, query, itemsKey) {
+  const branchCredentials = await getBranchCredentials(branchCode);
+  const payload = buildBasePayload(branchCredentials, query, itemsKey);
   const response = await fetchInvoices(payload);
 
   return {
     provider: 'suizo',
+    branch: branchCredentials.branchCode,
     request: payload,
     response,
   };
 }
 
 // Endpoints públicos usados por las rutas
-export function getInvoiceTotals(query) {
-  return executeSuizoRequest(query, 'totals');       // tcItems = 'F'
+export function getInvoiceTotals(branchCode, query) {
+  return executeSuizoRequest(branchCode, query, 'totals');       // tcItems = 'F'
 }
 
-export function getInvoiceDetails(query) {
-  return executeSuizoRequest(query, 'details');      // tcItems = 'D'
+export function getInvoiceDetails(branchCode, query) {
+  return executeSuizoRequest(branchCode, query, 'details');      // tcItems = 'D'
 }
 
-export function getInvoicePerceptions(query) {
-  return executeSuizoRequest(query, 'perceptions');  // tcItems = 'P'
+export function getInvoicePerceptions(branchCode, query) {
+  return executeSuizoRequest(branchCode, query, 'perceptions');  // tcItems = 'P'
 }
 
 export default {
