@@ -14,7 +14,7 @@ const cfg = {
     suizo: {
       wsdlUrl:
         process.env.SUIZO_WSDL_URL ??
-        'http://pruebas.suizoargentina.com.ar/webservice/wspedidos2.wsdl',
+        'https://ws.suizoargentina.com/webservice/wspedidos2.wsdl',
       soapMethod: process.env.SUIZO_SOAP_METHOD ?? 'ConsultarFacturacion',
       responseField: process.env.SUIZO_RESPONSE_FIELD ?? 'ConsultarFacturacionResult',
       empresa: process.env.SUIZO_EMPRESA ? Number(process.env.SUIZO_EMPRESA) : 1,
@@ -29,9 +29,6 @@ const cfg = {
     cofarsur: {
       // Remoto
       wsdlUrl: process.env.COFARSUR_WSDL_URL || null,
-      wsdlUrlAlt1: process.env.COFARSUR_WSDL_URL_ALT1 || null,
-      wsdlUrlAlt2: process.env.COFARSUR_WSDL_URL_ALT2 || null,
-      wsdlUrlAlt3: process.env.COFARSUR_WSDL_URL_ALT3 || null,
       // Local (archivo) — si no hay WSDL público
       wsdlFile: process.env.COFARSUR_WSDL_FILE || null,
 
@@ -51,7 +48,7 @@ const cfg = {
     monroe: {
       baseUrl:
         process.env.MONROE_BASE_URL ??
-        'https://servicios-test.monroeamericana.com.ar/api-cli/',
+        'https://servicios.monroeamericana.com.ar/api-cli/',
       adeVersion: process.env.MONROE_ADE_VERSION ?? 'ade/1.0.0',
       softwareKey: process.env.MONROE_SOFTWARE_KEY,
       customerKey: process.env.MONROE_CUSTOMER_KEY,
