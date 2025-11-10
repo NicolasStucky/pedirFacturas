@@ -11,8 +11,20 @@ function getEarliestAllowed(maxDays) {
   return earliest;
 }
 
-export function formatToISO8601(date) {
-  return new Date(date).toISOString();
+export function formatToISODate(date) {
+  const asDate = new Date(date);
+  if (Number.isNaN(asDate.getTime())) {
+    const error = new Error('Fecha inválida, no se puede formatear a ISO');
+    error.status = 400;
+    throw error;
+  }
+
+  const midnight = toUtcMidnight(asDate);
+  const year = midnight.getUTCFullYear();
+  const month = String(midnight.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(midnight.getUTCDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 export function parseISO8601(input) {
@@ -36,7 +48,7 @@ export function parseISO8601(input) {
     throw error;
   }
 
-  return parsed;
+  return toUtcMidnight(parsed);
 }
 
 export function ensureMaxRange(desde, hasta, maxDays = 6) {
@@ -74,13 +86,9 @@ export function getDefaultRange(maxDays = 6) {
   const earliestAllowed = getEarliestAllowed(maxDays);
   const targetDay = yesterday < earliestAllowed ? earliestAllowed : yesterday;
 
-  const rangeStart = new Date(targetDay);
-  const rangeEnd = new Date(targetDay);
-  rangeEnd.setUTCHours(23, 59, 59, 999);
-
   return {
-    desde: formatToISO8601(rangeStart),
-    hasta: formatToISO8601(rangeEnd)
+    desde: formatToISODate(targetDay),
+    hasta: formatToISODate(targetDay)
   };
 }
 
@@ -88,5 +96,5 @@ export default {
   parseISO8601,
   ensureMaxRange,
   getDefaultRange,
-  formatToISO8601
+  formatToISODate
 };
