@@ -20,7 +20,7 @@ function buildPayload(branchCredentials, query) {
     ? providerConfig.maxRangeDays
     : 6;
 
-  // Siempre consultamos el último día disponible para Cofarsur.
+  // Siempre consultamos las últimas 24 horas (día anterior a hoy) para Cofarsur.
   const { desde: fecha_desde, hasta: fecha_hasta } = getDefaultRange(maxRangeDays);
 
   ensureMaxRange(fecha_desde, fecha_hasta, maxRangeDays);

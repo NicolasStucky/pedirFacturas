@@ -79,7 +79,7 @@ Parámetros soportados (query string):
 
 | Parámetro   | Obligatorio | Descripción |
 |-------------|-------------|-------------|
-| `tcDesde`   | No          | Fecha inicial en formato `dd/mm/aaaa`. Si no se envía, se toma 6 días antes de `tcHasta` (por defecto hoy). |
+| `tcDesde`   | No          | Fecha inicial en formato `dd/mm/aaaa`. Si no se envía se utiliza automáticamente la fecha del día anterior (últimas 24 horas). |
 | `tcHasta`   | No          | Fecha final en formato `dd/mm/aaaa`. El rango efectivo no puede exceder los 7 días corridos. Por defecto es la fecha actual. |
 | `tnEmpresa` | No          | Código de empresa (por defecto `1`). |
 | `tcUsuario` | No          | Usuario asignado para el servicio web. |
@@ -87,7 +87,7 @@ Parámetros soportados (query string):
 | `tcGrupo`   | No          | Grupo de consulta. Valores `G` o `C`. |
 | `tnCuenta`  | No          | Código de cuenta específico. |
 
-> **Nota:** cuando no se envían `tcDesde` y/o `tcHasta`, el servicio utiliza por defecto el rango de los últimos 7 días corridos contados hasta la fecha actual.
+> **Nota:** cuando no se envían `tcDesde` y/o `tcHasta`, el servicio utiliza por defecto el rango de las últimas 24 horas (desde la fecha anterior hasta la fecha actual).
 
 Los endpoints devuelven el payload enviado al servicio de Suizo y la respuesta interpretada (XML crudo y objeto parseado) para facilitar el consumo en otras capas de la aplicación.
 
@@ -106,8 +106,8 @@ Parámetros soportados (query string):
 
 | Parámetro        | Obligatorio | Descripción |
 |------------------|-------------|-------------|
-| `fecha_desde`    | No          | Fecha inicial en formato `dd/mm/aaaa`. Se toma el rango por defecto configurado si no se indica. |
-| `fecha_hasta`    | No          | Fecha final en formato `dd/mm/aaaa`. |
+| `fecha_desde`    | No          | Fecha inicial en formato `dd/mm/aaaa`. Si no se envía, se consulta la fecha del día anterior (últimas 24 horas). |
+| `fecha_hasta`    | No          | Fecha final en formato `dd/mm/aaaa`. Por defecto es la fecha actual. |
 | `usuario`        | Sí*         | Usuario cliente de Cofarsur. Se puede definir por query o variable de entorno. |
 | `clave`          | Sí*         | Clave del usuario. Se puede definir por query o variable de entorno. |
 | `token`          | Sí*         | Token de seguridad provisto por Cofarsur. |
@@ -127,8 +127,8 @@ Parámetros soportados en la consulta general (`/comprobantes`):
 
 | Parámetro                    | Obligatorio | Descripción |
 |------------------------------|-------------|-------------|
-| `fechaDesde` / `fecha_desde` | No          | Fecha inicial en formato ISO 8601 (por ejemplo `2024-04-06T00:00:00.000Z`). Si no se envía se usa el rango por defecto (últimos 7 días corridos). |
-| `fechaHasta` / `fecha_hasta` | No          | Fecha final en formato ISO 8601. Debe respetar el rango máximo de 7 días corridos. |
+| `fechaDesde` / `fecha_desde` | No          | Fecha inicial en formato ISO 8601 (por ejemplo `2024-04-06`). Si no se envía se toma automáticamente la fecha del día anterior (últimas 24 horas). |
+| `fechaHasta` / `fecha_hasta` | No          | Fecha final en formato ISO 8601. Debe respetar el rango máximo de 7 días corridos. Por defecto es la fecha actual. |
 | `nro_comprobante`            | No          | Número completo del comprobante (`0001-00000001`). |
 | `tipo`                       | No          | Tipo de comprobante (por ejemplo `FC`). |
 | `letra`                      | No          | Letra del comprobante (por ejemplo `A`). |
