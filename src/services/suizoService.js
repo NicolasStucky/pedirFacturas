@@ -1,9 +1,31 @@
 import config from '../config/index.js';
 import { fetchInvoices } from '../clients/suizoClient.js';
-import { ensureMaxRange, getDefaultRange } from '../utils/date.js';
-import { getBranchCredentials } from '../repositories/branchCredentialsRepository.js';
+import {
+  ensureMaxRange,
+  getDefaultRange,
+  parseDDMMYYYY,
+  formatToDDMMYYYY,
+} from '../utils/date.js';
+import {
+  getBranchCredentials,
+  normalizeBranchCode,
+} from '../repositories/branchCredentialsRepository.js';
 
 const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
+
+function ensureDateOnly(value) {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+
+  try {
+    const parsedDate = parseDDMMYYYY(trimmed);
+    return formatToDDMMYYYY(parsedDate);
+  } catch (error) {
+    const [dayPart] = trimmed.split(' ');
+    return dayPart;
+  }
+}
 
 // Para el método Facturas:
 // - tcGrupo  -> 'C' (Cuenta) | 'G' (Grupo)  ← ¡LETRA MAYÚSCULA!
@@ -47,9 +69,15 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
 
   // Rango por defecto + validación
   const defaults = getDefaultRange(MAX_RANGE_DAYS);
-  const tcDesde = rawDesde ?? defaults.desde;
-  const tcHasta = rawHasta ?? defaults.hasta;
+  const normalizedRawDesde = typeof rawDesde === 'string' ? rawDesde.trim() : rawDesde;
+  const normalizedRawHasta = typeof rawHasta === 'string' ? rawHasta.trim() : rawHasta;
+
+  const tcDesde = normalizedRawDesde ?? defaults.desde;
+  const tcHasta = normalizedRawHasta ?? defaults.hasta;
   ensureMaxRange(tcDesde, tcHasta, MAX_RANGE_DAYS);
+
+  const payloadDesde = ensureDateOnly(tcDesde);
+  const payloadHasta = ensureDateOnly(tcHasta);
 
   // Determinar grupo y cuenta
   const cuentaFinal = tnCuenta ?? branchSuizo.cuenta ?? suizo.cuenta;
@@ -65,8 +93,8 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
     tcUsuario: tcUsuario ?? branchSuizo.usuario ?? suizo.usuario,
     tcClave:   tcClave   ?? branchSuizo.clave   ?? suizo.clave,
     tcGrupo:   grupoFinal,  // 'C' o 'G'
-    tcDesde,
-    tcHasta,
+    tcDesde: payloadDesde,
+    tcHasta: payloadHasta,
   };
 
   // Si grupo es 'C' y no tenemos cuenta => error claro
@@ -91,15 +119,43 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
 }
 
 async function executeSuizoRequest(branchCode, query, itemsKey) {
+  const normalizedBranch = normalizeBranchCode(branchCode);
   const branchCredentials = await getBranchCredentials(branchCode);
   const payload = buildBasePayload(branchCredentials, query, itemsKey);
   const response = await fetchInvoices(payload);
 
+  const branchLabel = branchCredentials.branchCode ?? normalizedBranch ?? branchCode;
+
+  const parsedWithBranch = Array.isArray(response.parsed)
+    ? response.parsed.map((row) => {
+        if (!row || typeof row !== 'object') return row;
+
+        const providerBranch =
+          row.sucursalProveedor ??
+          row.sucursal_proveedor ??
+          row.sucursal;
+
+        return {
+          ...row,
+          ...(providerBranch !== undefined && providerBranch !== branchLabel
+            ? { sucursalProveedor: providerBranch }
+            : {}),
+          sucursal: branchLabel,
+        };
+      })
+    : response.parsed;
+
+  const responseWithBranch =
+    parsedWithBranch === response.parsed
+      ? response
+      : { ...response, parsed: parsedWithBranch };
+
   return {
     provider: 'suizo',
-    branch: branchCredentials.branchCode,
+    branch: branchLabel,
+    requestedBranch: normalizedBranch ?? branchCode,
     request: payload,
-    response,
+    response: responseWithBranch,
   };
 }
 

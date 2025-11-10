@@ -67,21 +67,20 @@ export function ensureMaxRange(desde, hasta, maxDays = 6) {
 }
 
 export function getDefaultRange(maxDays = 6) {
-  const end = toUtcMidnight();
-  const start = new Date(end);
-  start.setUTCDate(end.getUTCDate() - 3);
+  const today = toUtcMidnight();
+  const yesterday = new Date(today);
+  yesterday.setUTCDate(today.getUTCDate() - 1);
 
   const earliestAllowed = getEarliestAllowed(maxDays);
-  if (start < earliestAllowed) {
-    return {
-      desde: formatToISO8601(earliestAllowed),
-      hasta: formatToISO8601(end)
-    };
-  }
+  const targetDay = yesterday < earliestAllowed ? earliestAllowed : yesterday;
+
+  const rangeStart = new Date(targetDay);
+  const rangeEnd = new Date(targetDay);
+  rangeEnd.setUTCHours(23, 59, 59, 999);
 
   return {
-    desde: formatToISO8601(start),
-    hasta: formatToISO8601(end)
+    desde: formatToISO8601(rangeStart),
+    hasta: formatToISO8601(rangeEnd)
   };
 }
 
