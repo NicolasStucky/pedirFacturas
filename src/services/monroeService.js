@@ -165,10 +165,9 @@ function sanitizeCredentials(credentials) {
 
 function buildComprobantesParams(query = {}) {
   const defaults = getDefaultRange(MAX_RANGE_DAYS);
-  const fechaDesde =
-    normalizeString(query.fechaDesde ?? query.fecha_desde) ?? defaults.desde;
-  const fechaHasta =
-    normalizeString(query.fechaHasta ?? query.fecha_hasta) ?? defaults.hasta;
+  // Siempre consultamos el último día disponible para Monroe.
+  const fechaDesde = defaults.desde;
+  const fechaHasta = defaults.hasta;
 
   ensureMaxRange(fechaDesde, fechaHasta, MAX_RANGE_DAYS);
 
