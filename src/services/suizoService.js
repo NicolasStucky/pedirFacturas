@@ -57,8 +57,6 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
   const branchSuizo = branchCredentials?.suizo ?? {};
 
   const {
-    tcDesde: rawDesde,
-    tcHasta: rawHasta,
     tnEmpresa,
     tcUsuario,
     tcClave,
@@ -68,16 +66,12 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
   } = query;
 
   // Rango por defecto + validación
-  const defaults = getDefaultRange(MAX_RANGE_DAYS);
-  const normalizedRawDesde = typeof rawDesde === 'string' ? rawDesde.trim() : rawDesde;
-  const normalizedRawHasta = typeof rawHasta === 'string' ? rawHasta.trim() : rawHasta;
+  // Siempre consultamos el último día disponible para Suizo.
+  const { desde, hasta } = getDefaultRange(MAX_RANGE_DAYS);
+  ensureMaxRange(desde, hasta, MAX_RANGE_DAYS);
 
-  const tcDesde = normalizedRawDesde ?? defaults.desde;
-  const tcHasta = normalizedRawHasta ?? defaults.hasta;
-  ensureMaxRange(tcDesde, tcHasta, MAX_RANGE_DAYS);
-
-  const payloadDesde = ensureDateOnly(tcDesde);
-  const payloadHasta = ensureDateOnly(tcHasta);
+  const payloadDesde = ensureDateOnly(desde);
+  const payloadHasta = ensureDateOnly(hasta);
 
   // Determinar grupo y cuenta
   const cuentaFinal = tnCuenta ?? branchSuizo.cuenta ?? suizo.cuenta;
