@@ -1,6 +1,11 @@
 import config from '../config/index.js';
 import { fetchInvoices } from '../clients/suizoClient.js';
-import { ensureMaxRange, getDefaultRange } from '../utils/date.js';
+import {
+  ensureMaxRange,
+  getDefaultRange,
+  parseDDMMYYYY,
+  formatToDDMMYYYY,
+} from '../utils/date.js';
 import {
   getBranchCredentials,
   normalizeBranchCode,
@@ -8,17 +13,26 @@ import {
 
 const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
 
-const DATE_WITH_TIME_REGEX =
-  /^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?$/;
-
 function ensureTimeComponent(value, fallbackTime) {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
 
-  return DATE_WITH_TIME_REGEX.test(trimmed)
-    ? trimmed
-    : `${trimmed} ${fallbackTime}`;
+  try {
+    const parsedDate = parseDDMMYYYY(trimmed);
+    const dayPart = formatToDDMMYYYY(parsedDate);
+
+    const hasTimeComponent = /\s+\d{2}:\d{2}/.test(trimmed);
+    if (!hasTimeComponent) {
+      return `${dayPart} ${fallbackTime}`;
+    }
+
+    const hours = String(parsedDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(parsedDate.getUTCMinutes()).padStart(2, '0');
+    return `${dayPart} ${hours}:${minutes}`;
+  } catch (error) {
+    return `${trimmed} ${fallbackTime}`;
+  }
 }
 
 // Para el método Facturas:
