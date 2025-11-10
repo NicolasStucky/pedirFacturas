@@ -1,7 +1,10 @@
 import config from '../config/index.js';
 import { fetchInvoices } from '../clients/suizoClient.js';
 import { ensureMaxRange, getDefaultRange } from '../utils/date.js';
-import { getBranchCredentials } from '../repositories/branchCredentialsRepository.js';
+import {
+  getBranchCredentials,
+  normalizeBranchCode,
+} from '../repositories/branchCredentialsRepository.js';
 
 const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
 
@@ -91,15 +94,43 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
 }
 
 async function executeSuizoRequest(branchCode, query, itemsKey) {
+  const normalizedBranch = normalizeBranchCode(branchCode);
   const branchCredentials = await getBranchCredentials(branchCode);
   const payload = buildBasePayload(branchCredentials, query, itemsKey);
   const response = await fetchInvoices(payload);
 
+  const branchLabel = branchCredentials.branchCode ?? normalizedBranch ?? branchCode;
+
+  const parsedWithBranch = Array.isArray(response.parsed)
+    ? response.parsed.map((row) => {
+        if (!row || typeof row !== 'object') return row;
+
+        const providerBranch =
+          row.sucursalProveedor ??
+          row.sucursal_proveedor ??
+          row.sucursal;
+
+        return {
+          ...row,
+          ...(providerBranch !== undefined && providerBranch !== branchLabel
+            ? { sucursalProveedor: providerBranch }
+            : {}),
+          sucursal: branchLabel,
+        };
+      })
+    : response.parsed;
+
+  const responseWithBranch =
+    parsedWithBranch === response.parsed
+      ? response
+      : { ...response, parsed: parsedWithBranch };
+
   return {
     provider: 'suizo',
-    branch: branchCredentials.branchCode,
+    branch: branchLabel,
+    requestedBranch: normalizedBranch ?? branchCode,
     request: payload,
-    response,
+    response: responseWithBranch,
   };
 }
 

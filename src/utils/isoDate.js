@@ -69,7 +69,7 @@ export function ensureMaxRange(desde, hasta, maxDays = 6) {
 export function getDefaultRange(maxDays = 6) {
   const end = toUtcMidnight();
   const start = new Date(end);
-  start.setUTCDate(end.getUTCDate() - 3);
+  start.setUTCDate(end.getUTCDate() - 1);
 
   const earliestAllowed = getEarliestAllowed(maxDays);
   if (start < earliestAllowed) {
