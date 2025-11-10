@@ -3,19 +3,6 @@ import { fetchComprobantes } from '../clients/cofarsurClient.js';
 import { ensureMaxRange, getDefaultRange } from '../utils/date.js';
 import { getBranchCredentials } from '../repositories/branchCredentialsRepository.js';
 
-function resolveDate(key, query, defaults) {
-  const direct = query[key];
-  if (typeof direct === 'string' && direct.trim()) return direct.trim();
-
-  const camelKey = key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-  const camel = query[camelKey];
-  if (typeof camel === 'string' && camel.trim()) return camel.trim();
-
-  if (key === 'fecha_desde') return defaults.desde;
-  if (key === 'fecha_hasta') return defaults.hasta;
-  return undefined;
-}
-
 function requireCredential(value, name, branchCode) {
   if (typeof value === 'string' && value.trim()) return value.trim();
   const suffix = branchCode ? ` para la sucursal ${branchCode}` : '';
@@ -33,10 +20,8 @@ function buildPayload(branchCredentials, query) {
     ? providerConfig.maxRangeDays
     : 6;
 
-  const defaults = getDefaultRange(maxRangeDays);
-
-  const fecha_desde = resolveDate('fecha_desde', query, defaults);
-  const fecha_hasta = resolveDate('fecha_hasta', query, defaults);
+  // Siempre consultamos el último día disponible para Cofarsur.
+  const { desde: fecha_desde, hasta: fecha_hasta } = getDefaultRange(maxRangeDays);
 
   ensureMaxRange(fecha_desde, fecha_hasta, maxRangeDays);
 
