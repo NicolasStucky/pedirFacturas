@@ -165,7 +165,7 @@ function sanitizeCredentials(credentials) {
 
 function buildComprobantesParams(query = {}) {
   const defaults = getDefaultRange(MAX_RANGE_DAYS);
-  // Siempre consultamos el último día disponible para Monroe.
+  // Siempre consultamos las últimas 24 horas (día anterior a hoy) para Monroe.
   const fechaDesde = defaults.desde;
   const fechaHasta = defaults.hasta;
 

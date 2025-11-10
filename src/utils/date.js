@@ -98,16 +98,18 @@ export function ensureMaxRange(desde, hasta, maxDays) {
 }
 
 export function getDefaultRange(maxDays = 6) {
-  const today = toUTCMidnight();
-  const yesterday = new Date(today);
-  yesterday.setUTCDate(today.getUTCDate() - 1);
+  const end = toUTCMidnight();
+  const start = new Date(end);
+  start.setUTCDate(end.getUTCDate() - 1);
 
   const earliestAllowed = getEarliestAllowed(maxDays);
-  const targetDay = yesterday < earliestAllowed ? earliestAllowed : yesterday;
+  const normalizedStart = start < earliestAllowed ? earliestAllowed : start;
+
+  const normalizedEnd = end < normalizedStart ? normalizedStart : end;
 
   return {
-    desde: formatToDDMMYYYY(targetDay),
-    hasta: formatToDDMMYYYY(targetDay)
+    desde: formatToDDMMYYYY(normalizedStart),
+    hasta: formatToDDMMYYYY(normalizedEnd)
   };
 }
 

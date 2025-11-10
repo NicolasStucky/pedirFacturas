@@ -66,7 +66,7 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
   } = query;
 
   // Rango por defecto + validación
-  // Siempre consultamos el último día disponible para Suizo.
+  // Siempre consultamos las últimas 24 horas (día anterior a hoy) para Suizo.
   const { desde, hasta } = getDefaultRange(MAX_RANGE_DAYS);
   ensureMaxRange(desde, hasta, MAX_RANGE_DAYS);
 
