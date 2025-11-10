@@ -4,6 +4,13 @@ function toUtcMidnight(date = new Date()) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 
+function getEarliestAllowed(maxDays) {
+  const today = toUtcMidnight();
+  const earliest = new Date(today);
+  earliest.setUTCDate(today.getUTCDate() - maxDays);
+  return earliest;
+}
+
 export function formatToISO8601(date) {
   return new Date(date).toISOString();
 }
@@ -49,13 +56,28 @@ export function ensureMaxRange(desde, hasta, maxDays = 6) {
     throw error;
   }
 
+  const earliestAllowed = getEarliestAllowed(maxDays);
+  if (start < earliestAllowed) {
+    const error = new Error(`Solo se admiten fechas dentro de los últimos ${maxDays} días`);
+    error.status = 400;
+    throw error;
+  }
+
   return { start, end };
 }
 
 export function getDefaultRange(maxDays = 6) {
   const end = toUtcMidnight();
   const start = new Date(end);
-  start.setUTCDate(end.getUTCDate() - maxDays);
+  start.setUTCDate(end.getUTCDate() - 1);
+
+  const earliestAllowed = getEarliestAllowed(maxDays);
+  if (start < earliestAllowed) {
+    return {
+      desde: formatToISO8601(earliestAllowed),
+      hasta: formatToISO8601(end)
+    };
+  }
 
   return {
     desde: formatToISO8601(start),
