@@ -70,8 +70,8 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
   const tcHasta = normalizedRawHasta ?? defaults.hasta;
   ensureMaxRange(tcDesde, tcHasta, MAX_RANGE_DAYS);
 
-  const payloadDesde = ensureTimeComponent(tcDesde, '00:00:00');
-  const payloadHasta = ensureTimeComponent(tcHasta, '23:59:59');
+  const payloadDesde = ensureTimeComponent(tcDesde, '00:00');
+  const payloadHasta = ensureTimeComponent(tcHasta, '23:59');
 
   // Determinar grupo y cuenta
   const cuentaFinal = tnCuenta ?? branchSuizo.cuenta ?? suizo.cuenta;
