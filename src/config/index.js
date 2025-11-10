@@ -43,7 +43,7 @@ const cfg = {
 
       maxRangeDays: process.env.COFARSUR_MAX_RANGE_DAYS
         ? Number(process.env.COFARSUR_MAX_RANGE_DAYS)
-        : 6
+        : 4
     },
     monroe: {
       baseUrl:

@@ -10,7 +10,7 @@ import {
   getDefaultRange,
 } from '../utils/isoDate.js';
 
-const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
+const MAX_RANGE_DAYS = 4; // 5 días corridos incluyendo límites
 const tokenCache = new Map();
 
 function normalizeString(value) {

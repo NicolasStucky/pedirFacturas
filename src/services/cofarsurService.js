@@ -31,7 +31,7 @@ function buildPayload(branchCredentials, query) {
   const branchCofarsur = branchCredentials?.cofarsur ?? {};
   const maxRangeDays = Number.isFinite(providerConfig.maxRangeDays)
     ? providerConfig.maxRangeDays
-    : 6;
+    : 4;
 
   const defaults = getDefaultRange(maxRangeDays);
 

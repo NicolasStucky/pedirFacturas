@@ -3,7 +3,7 @@ import { fetchInvoices } from '../clients/suizoClient.js';
 import { ensureMaxRange, getDefaultRange } from '../utils/date.js';
 import { getBranchCredentials } from '../repositories/branchCredentialsRepository.js';
 
-const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
+const MAX_RANGE_DAYS = 4; // 5 días corridos incluyendo límites
 
 // Para el método Facturas:
 // - tcGrupo  -> 'C' (Cuenta) | 'G' (Grupo)  ← ¡LETRA MAYÚSCULA!
