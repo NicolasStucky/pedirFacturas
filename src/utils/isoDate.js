@@ -74,9 +74,13 @@ export function getDefaultRange(maxDays = 6) {
   const earliestAllowed = getEarliestAllowed(maxDays);
   const targetDay = yesterday < earliestAllowed ? earliestAllowed : yesterday;
 
+  const rangeStart = new Date(targetDay);
+  const rangeEnd = new Date(targetDay);
+  rangeEnd.setUTCHours(23, 59, 59, 999);
+
   return {
-    desde: formatToISO8601(targetDay),
-    hasta: formatToISO8601(targetDay)
+    desde: formatToISO8601(rangeStart),
+    hasta: formatToISO8601(rangeEnd)
   };
 }
 

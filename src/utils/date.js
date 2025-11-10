@@ -1,4 +1,5 @@
-const DATE_REGEX = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+const DATE_REGEX =
+  /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
 
 function toUTCMidnight(date = new Date()) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
@@ -24,23 +25,38 @@ export function parseDDMMYYYY(input) {
     throw new Error('Formato de fecha inválido, debe ser una cadena');
   }
 
-  const match = input.match(DATE_REGEX);
+  const trimmed = input.trim();
+  const match = trimmed.match(DATE_REGEX);
 
   if (!match) {
     throw new Error('Formato de fecha inválido, debe ser dd/mm/aaaa');
   }
 
-  const [, dayStr, monthStr, yearStr] = match;
+  const [, dayStr, monthStr, yearStr, hourStr, minuteStr, secondStr] = match;
   const day = Number(dayStr);
   const month = Number(monthStr) - 1;
   const year = Number(yearStr);
+  const hours = hourStr === undefined ? 0 : Number(hourStr);
+  const minutes = minuteStr === undefined ? 0 : Number(minuteStr);
+  const seconds = secondStr === undefined ? 0 : Number(secondStr);
 
-  const date = new Date(Date.UTC(year, month, day));
+  if (
+    hours < 0 || hours > 23 ||
+    minutes < 0 || minutes > 59 ||
+    seconds < 0 || seconds > 59
+  ) {
+    throw new Error('Hora inválida en la fecha proporcionada');
+  }
+
+  const date = new Date(Date.UTC(year, month, day, hours, minutes, seconds));
 
   if (
     date.getUTCFullYear() !== year ||
     date.getUTCMonth() !== month ||
-    date.getUTCDate() !== day
+    date.getUTCDate() !== day ||
+    date.getUTCHours() !== hours ||
+    date.getUTCMinutes() !== minutes ||
+    date.getUTCSeconds() !== seconds
   ) {
     throw new Error('Fecha inválida');
   }
