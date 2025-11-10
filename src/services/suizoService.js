@@ -13,25 +13,17 @@ import {
 
 const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
 
-function ensureTimeComponent(value, fallbackTime) {
+function ensureDateOnly(value) {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   if (!trimmed) return trimmed;
 
   try {
     const parsedDate = parseDDMMYYYY(trimmed);
-    const dayPart = formatToDDMMYYYY(parsedDate);
-
-    const hasTimeComponent = /\s+\d{2}:\d{2}/.test(trimmed);
-    if (!hasTimeComponent) {
-      return `${dayPart} ${fallbackTime}`;
-    }
-
-    const hours = String(parsedDate.getUTCHours()).padStart(2, '0');
-    const minutes = String(parsedDate.getUTCMinutes()).padStart(2, '0');
-    return `${dayPart} ${hours}:${minutes}`;
+    return formatToDDMMYYYY(parsedDate);
   } catch (error) {
-    return `${trimmed} ${fallbackTime}`;
+    const [dayPart] = trimmed.split(' ');
+    return dayPart;
   }
 }
 
@@ -84,8 +76,8 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
   const tcHasta = normalizedRawHasta ?? defaults.hasta;
   ensureMaxRange(tcDesde, tcHasta, MAX_RANGE_DAYS);
 
-  const payloadDesde = ensureTimeComponent(tcDesde, '00:00');
-  const payloadHasta = ensureTimeComponent(tcHasta, '23:59');
+  const payloadDesde = ensureDateOnly(tcDesde);
+  const payloadHasta = ensureDateOnly(tcHasta);
 
   // Determinar grupo y cuenta
   const cuentaFinal = tnCuenta ?? branchSuizo.cuenta ?? suizo.cuenta;
