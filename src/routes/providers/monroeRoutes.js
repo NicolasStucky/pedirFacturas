@@ -26,7 +26,7 @@ export default router;
 
 
 
-////////////// LIMPIEZA DE TABLA //////////////////
+////////////// LIMPIEZA DE TABLA  ////////////////
 import { Router } from 'express';
 
 import {
@@ -44,10 +44,10 @@ router.get('/:branchs/_login', monroeLoginProbeController);
 // Endpoint simplificado (solo customer_reference, fecha, codigo_busqueda)
 router.get('/:branchs/comprobantes', listMonroeComprobantesSlim);
 
-// Endpoint completo con todos los datos
+// Endpoint completo con todos los datos (lista)
 router.get('/:branchs/comprobantes/full', listMonroeComprobantes);
 
-// Detalle de comprobante individual
+// Detalle de comprobante (limpio)
 router.get('/:branchs/comprobantes/:comprobanteId', getMonroeComprobanteDetalleController);
 
 export default router;
