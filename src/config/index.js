@@ -67,7 +67,7 @@ const cfg = {
       password: process.env.KELLERHOFF_PASSWORD,
       pharmacyReference:
         process.env.KELLERHOFF_PHARMACY_REFERENCE != null &&
-        process.env.KELLERHOFF_PHARMACY_REFERENCE !== ''
+          process.env.KELLERHOFF_PHARMACY_REFERENCE !== ''
           ? Number(process.env.KELLERHOFF_PHARMACY_REFERENCE)
           : undefined,
       timeout: process.env.KELLERHOFF_TIMEOUT
