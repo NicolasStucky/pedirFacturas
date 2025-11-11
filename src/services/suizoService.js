@@ -66,7 +66,6 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
   } = query;
 
   // Rango por defecto + validación
-  // Siempre consultamos las últimas 24 horas (día anterior a hoy) para Suizo.
   const { desde, hasta } = getDefaultRange(MAX_RANGE_DAYS);
   ensureMaxRange(desde, hasta, MAX_RANGE_DAYS);
 
@@ -85,8 +84,8 @@ function buildBasePayload(branchCredentials, query, itemsKey) {
   const payload = {
     tnEmpresa: tnEmpresa ? Number(tnEmpresa) : Number(suizo.empresa),
     tcUsuario: tcUsuario ?? branchSuizo.usuario ?? suizo.usuario,
-    tcClave:   tcClave   ?? branchSuizo.clave   ?? suizo.clave,
-    tcGrupo:   grupoFinal,  // 'C' o 'G'
+    tcClave: tcClave ?? branchSuizo.clave ?? suizo.clave,
+    tcGrupo: grupoFinal,  // 'C' o 'G'
     tcDesde: payloadDesde,
     tcHasta: payloadHasta,
   };
@@ -120,23 +119,19 @@ async function executeSuizoRequest(branchCode, query, itemsKey) {
 
   const branchLabel = branchCredentials.branchCode ?? normalizedBranch ?? branchCode;
 
+  // 🔧 Limpieza de campos no deseados del proveedor
   const parsedWithBranch = Array.isArray(response.parsed)
     ? response.parsed.map((row) => {
-        if (!row || typeof row !== 'object') return row;
+      if (!row || typeof row !== 'object') return row;
 
-        const providerBranch =
-          row.sucursalProveedor ??
-          row.sucursal_proveedor ??
-          row.sucursal;
+      // Eliminamos sucursalProveedor y sucursal_proveedor
+      const { sucursalProveedor: _sp, sucursal_proveedor: _sp2, ...clean } = row;
 
-        return {
-          ...row,
-          ...(providerBranch !== undefined && providerBranch !== branchLabel
-            ? { sucursalProveedor: providerBranch }
-            : {}),
-          sucursal: branchLabel,
-        };
-      })
+      return {
+        ...clean,
+        sucursal: branchLabel, // Reforzamos nuestra sucursal
+      };
+    })
     : response.parsed;
 
   const responseWithBranch =
