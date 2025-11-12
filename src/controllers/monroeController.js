@@ -40,6 +40,8 @@ export default {
 import {
   getMonroeComprobanteDetalle,
   getMonroeComprobantes,
+  getMonroeComprobantesForAllBranches,
+  getMonroeComprobantesSlim,
   monroeLoginProbe
 } from '../services/monroeService.js';
 
@@ -188,28 +190,17 @@ export async function listMonroeComprobantesSlim(req, res, next) {
       throw err;
     }
 
-    // Consulta completa (maneja token + retry)
-    const full = await getMonroeComprobantes(branch, req.query);
-    const customerRef = full?.request?.credentials?.customerReference ?? null;
+    const result = await getMonroeComprobantesSlim(branch, req.query);
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
 
-    const items = Array.isArray(full?.response?.Comprobantes)
-      ? full.response.Comprobantes
-      : [];
-
-    const data = items.map((it) => {
-      const cab = it?.Comprobante?.Cabecera ?? it?.Cabecera ?? {};
-      return {
-        customer_reference: customerRef,
-        fecha: cab?.fecha ?? null,
-        codigo_busqueda: cab?.codigo_busqueda ?? cab?.codigoBusqueda ?? null
-      };
-    });
-
-    res.json({
-      provider: 'monroe',
-      branch,
-      data
-    });
+export async function listMonroeComprobantesGeneral(req, res, next) {
+  try {
+    const results = await getMonroeComprobantesForAllBranches(req.query);
+    res.json(results);
   } catch (error) {
     next(error);
   }
@@ -409,6 +400,7 @@ export async function monroeLoginProbeController(req, res, next) {
 
 export default {
   listMonroeComprobantes,
+  listMonroeComprobantesGeneral,
   listMonroeComprobantesSlim,
   getMonroeComprobanteDetalleController, // (detalle limpio)
   monroeLoginProbeController

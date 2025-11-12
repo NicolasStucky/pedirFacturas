@@ -32,11 +32,15 @@ import { Router } from 'express';
 import {
   getMonroeComprobanteDetalleController,
   listMonroeComprobantes,
+  listMonroeComprobantesGeneral,
   monroeLoginProbeController,
   listMonroeComprobantesSlim
 } from '../../controllers/monroeController.js';
 
 const router = Router();
+
+// Consulta general (todas las sucursales)
+router.get('/comprobantes/general', listMonroeComprobantesGeneral);
 
 // Diagnóstico de login
 router.get('/:branchs/_login', monroeLoginProbeController);
