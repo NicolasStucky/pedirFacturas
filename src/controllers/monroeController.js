@@ -1,42 +1,3 @@
-/* import {
-  getMonroeComprobanteDetalle,
-  getMonroeComprobantes,
-} from '../services/monroeService.js';
-
-export async function listMonroeComprobantes(req, res, next) {
-  try {
-    const result = await getMonroeComprobantes(req.params.branch, req.query);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function getMonroeComprobanteDetalleController(req, res, next) {
-  try {
-    const result = await getMonroeComprobanteDetalle(
-      req.params.branch,
-      req.params.comprobanteId,
-      req.query
-    );
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export default {
-  listMonroeComprobantes,
-  getMonroeComprobanteDetalleController,
-};
- */
-
-
-
-
-
-// // // // //          LIMPIEZA DE TABLA     // // // // // // //
-
 import {
   getMonroeComprobanteDetalle,
   getMonroeComprobantes,
@@ -199,26 +160,15 @@ export async function listMonroeComprobantesSlim(req, res, next) {
 
 export async function listMonroeComprobantesGeneral(req, res, next) {
   try {
-    const results = await getMonroeComprobantesForAllBranches(req.query);
-    res.json(results);
+    const data = await getMonroeComprobantesForAllBranches(req.query);
+    // data = { results: [...], skipped: [...] }
+    res.json(data);
   } catch (error) {
     next(error);
   }
 }
 
 /** ----------------- DETALLE (LIMPIO) ----------------- **/
-
-/**
- * Detalle “limpio”
- * GET /api/providers/monroe/:branchs/comprobantes/:comprobanteId
- *
- * Devuelve:
- * {
- *   Cabecera: { ... },
- *   Total: { ... },
- *   Detalle: { arrayItems: [ ... ] }
- * }
- */
 export async function getMonroeComprobanteDetalleController(req, res, next) {
   try {
     const branch = (req.params.branchs || '').trim();
@@ -305,10 +255,10 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
     const totalImpuestosRaw = Array.isArray(totalRaw?.arrayImpuestos)
       ? totalRaw.arrayImpuestos
       : Array.isArray(totalRaw?.array_impuestos)
-      ? totalRaw.array_impuestos
-      : Array.isArray(totalRaw?.impuestos)
-      ? totalRaw.impuestos
-      : [];
+        ? totalRaw.array_impuestos
+        : Array.isArray(totalRaw?.impuestos)
+          ? totalRaw.impuestos
+          : [];
 
     const total = {
       lineas: totalRaw?.lineas ?? totalRaw?.cant_lineas ?? null,

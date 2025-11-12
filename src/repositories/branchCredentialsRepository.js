@@ -98,18 +98,19 @@ export async function listMonroeBranches() {
   const pool = await getPool();
   const [rows] = await pool.execute(
     `
-      SELECT sucursal_codigo
+      SELECT sucursal_codigo, monroe_ecommerce_key, monroe_cuenta
       FROM credenciales_droguerias
-      WHERE monroe_cuenta IS NOT NULL
-         OR monroe_ecommerce_key IS NOT NULL
-         OR monroe_software_key IS NOT NULL
+      WHERE monroe_ecommerce_key IS NOT NULL
+        AND monroe_cuenta IS NOT NULL
       ORDER BY sucursal_codigo
     `
   );
 
   const branches = rows
+    .filter(r => r.monroe_ecommerce_key && r.monroe_cuenta)
     .map((row) => normalizeBranchCode(row.sucursal_codigo))
-    .filter((code) => Boolean(code));
+    .filter((code) => Boolean(code))
+    .slice(0, 31); // limitar a 31 sucursales
 
   monroeBranchesCache = branches;
   return branches;

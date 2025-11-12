@@ -12,10 +12,20 @@ import {
   ensureMaxRange,
 } from '../utils/isoDate.js';
 
-const MAX_RANGE_DAYS = 7; // 7 días corridos incluyendo límites
+const MAX_RANGE_DAYS = 6; // política Monroe
+
+function todayYMD(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+// Últimos 6 días (incluye hoy)
 const FIXED_DEFAULT_RANGE = Object.freeze({
-  desde: '2025-11-06',
-  hasta: '2025-11-12',
+  desde: todayYMD(-5),
+  hasta: todayYMD(0),
 });
 
 /**
@@ -82,6 +92,13 @@ function buildCredentials(query = {}, branchCredentials) {
       ? String(providerConfig.tokenDurationMinutes)
       : undefined)
   );
+
+  // Para servicios de comprobantes (requieren contexto de cliente)
+  if (!customerKey || !customerReference) {
+    const error = new Error('Credenciales incompletas para Monroe: faltan ecommerce_customer_key y/o ecommerce_customer_reference');
+    error.status = 400;
+    throw error;
+  }
 
   return {
     softwareKey,
@@ -205,8 +222,14 @@ async function withMonroeAuthRetry(credentials, fn, { refreshFirst = false } = {
     return await fn(token);
   } catch (err) {
     const status = err?.status || err?.cause?.response?.status;
-    const msg = (err?.message || '').toString();
-    const isUnauthorized = status === 401 || /unauthorized/i.test(msg) || /\bAPI-cli-1\b/i.test(msg);
+    const body = err?.cause?.response?.data ?? {};
+    const msg = [(err?.message || ''), body?.mensaje, body?.message, body?.error?.description, body?.error]
+      .filter(Boolean).join(' ');
+    const isUnauthorized =
+      status === 401 ||
+      /unauthorized/i.test(msg) ||
+      /\bAPI-cli-1\b/i.test(msg) ||
+      /\bAPI-cli-2\.2\b/i.test(msg);
     if (!isUnauthorized) throw err;
 
     // Invalida y reintenta 1 vez
@@ -327,18 +350,35 @@ export async function getMonroeComprobantesSlim(branchCode, query = {}) {
 export async function getMonroeComprobantesForAllBranches(query = {}) {
   const branches = await listMonroeBranches();
   const results = [];
+  const skipped = [];
 
   for (const branch of branches) {
     const branchCredentials = await getBranchCredentials(branch);
-    const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
-    results.push({
-      provider: 'monroe',
-      branch: full.branch,
-      data: mapComprobantesToSlim(full),
-    });
+    try {
+      const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
+      results.push({
+        provider: 'monroe',
+        branch: full.branch,
+        data: mapComprobantesToSlim(full),
+      });
+    } catch (e) {
+      const status = e?.status || e?.cause?.response?.status;
+      const body = e?.cause?.response?.data ?? {};
+      const reason = [(e?.message || ''), body?.mensaje, body?.message, body?.error?.description].filter(Boolean).join(' ');
+      // Omitimos sucursales con credenciales incompletas o rechazo de autorización
+      if (
+        status === 401 ||
+        /API-cli-2\.2/i.test(reason) ||
+        /Credenciales incompletas/i.test(reason)
+      ) {
+        skipped.push({ branch, reason });
+        continue;
+      }
+      throw e; // otros errores sí rompen
+    }
   }
 
-  return results;
+  return { results, skipped };
 }
 
 export async function getMonroeComprobanteDetalle(branchCode, comprobanteId, query = {}) {
@@ -426,7 +466,6 @@ export async function monroeLoginProbe(branchCode, query = {}) {
     }
   };
 }
-
 
 export default {
   getMonroeComprobantes,
