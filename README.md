@@ -38,6 +38,13 @@ La aplicación expone por defecto los endpoints en `http://localhost:3000`.
 Las credenciales de cada proveedor ahora se obtienen dinámicamente desde una base de datos centralizada. Configura la conexión en el archivo `.env`:
 
 ```bash
+DB_HOST=
+DB_PORT=
+DB_USER=
+DB_PASS=
+DB_NAME=
+
+# Base dedicada para comprobantes de Monroe
 DB_HOST_MONROE=
 DB_PORT_MONROE=
 DB_USER_MONROE=
@@ -171,6 +178,13 @@ Variables relevantes en `.env`:
 PORT=3000
 
 # Base de datos de credenciales
+DB_HOST_MONROE=
+DB_PORT_MONROE=
+DB_USER_MONROE=
+DB_PASS_MONROE=
+DB_NAME_MONROE=
+
+# Base para comprobantes de Monroe
 DB_HOST_MONROE=
 DB_PORT_MONROE=
 DB_USER_MONROE=

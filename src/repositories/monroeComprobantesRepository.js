@@ -1,4 +1,4 @@
-import { getPool } from '../db/pool.js';
+import { getMonroePool } from '../db/monroePool.js';
 
 function mapResultsToRows(results = []) {
   const rows = [];
@@ -23,7 +23,7 @@ function mapResultsToRows(results = []) {
 
 export async function replaceAllMonroeComprobantes(results) {
   const rows = mapResultsToRows(results);
-  const pool = await getPool();
+  const pool = await getMonroePool();
   const connection = await pool.getConnection();
 
   try {
