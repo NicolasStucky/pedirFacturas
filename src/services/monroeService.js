@@ -15,7 +15,7 @@ import {
 const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
 const FIXED_DEFAULT_RANGE = Object.freeze({
   desde: '2025-10-01',
-  hasta: '2025-10-07',
+  hasta: '2025-10-06',
 });
 
 /**
