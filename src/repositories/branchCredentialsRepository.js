@@ -1,6 +1,7 @@
 import { getPool } from '../db/pool.js';
 
 const cache = new Map();
+let monroeBranchesCache;
 
 export function normalizeBranchCode(branchCode) {
   if (branchCode == null) return null;
@@ -89,6 +90,32 @@ export async function getBranchCredentials(branchCode) {
   return credentials;
 }
 
+export async function listMonroeBranches() {
+  if (Array.isArray(monroeBranchesCache)) {
+    return monroeBranchesCache;
+  }
+
+  const pool = await getPool();
+  const [rows] = await pool.execute(
+    `
+      SELECT sucursal_codigo
+      FROM credenciales_droguerias
+      WHERE monroe_cuenta IS NOT NULL
+         OR monroe_ecommerce_key IS NOT NULL
+         OR monroe_software_key IS NOT NULL
+      ORDER BY sucursal_codigo
+    `
+  );
+
+  const branches = rows
+    .map((row) => normalizeBranchCode(row.sucursal_codigo))
+    .filter((code) => Boolean(code));
+
+  monroeBranchesCache = branches;
+  return branches;
+}
+
 export default {
   getBranchCredentials,
+  listMonroeBranches,
 };

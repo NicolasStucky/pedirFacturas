@@ -4,13 +4,19 @@ import {
   fetchComprobantes,
   login,
 } from '../clients/monroeClient.js';
-import { getBranchCredentials } from '../repositories/branchCredentialsRepository.js';
+import {
+  getBranchCredentials,
+  listMonroeBranches,
+} from '../repositories/branchCredentialsRepository.js';
 import {
   ensureMaxRange,
-  getDefaultRange,
 } from '../utils/isoDate.js';
 
 const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
+const FIXED_DEFAULT_RANGE = Object.freeze({
+  desde: '2025-10-01',
+  hasta: '2025-10-06',
+});
 
 /**
  * Cache de tokens por combinación de credenciales.
@@ -226,7 +232,7 @@ function sanitizeCredentials(credentials) {
  * Parámetros de consulta
  * ============================ */
 function buildComprobantesParams(query = {}) {
-  const defaults = getDefaultRange(MAX_RANGE_DAYS);
+  const defaults = FIXED_DEFAULT_RANGE;
 
   // tomar de la query si vienen; si no, usar defaults
   const fechaDesde = normalizeString(
@@ -254,21 +260,43 @@ function buildComprobantesParams(query = {}) {
   return params;
 }
 
+function mapComprobantesToSlim(full) {
+  const customerRef = full?.request?.credentials?.customerReference ?? null;
+  const items = Array.isArray(full?.response?.Comprobantes)
+    ? full.response.Comprobantes
+    : [];
+
+  return items.map((it) => {
+    const cab = it?.Comprobante?.Cabecera ?? it?.Cabecera ?? {};
+    return {
+      customer_reference: customerRef,
+      fecha: cab?.fecha ?? null,
+      codigo_busqueda: cab?.codigo_busqueda ?? cab?.codigoBusqueda ?? null,
+    };
+  });
+}
+
 /* ============================
  * Casos públicos del servicio
  * ============================ */
-export async function getMonroeComprobantes(branchCode, query = {}) {
-  const branchCredentials = await getBranchCredentials(branchCode);
+async function fetchComprobantesForBranch(branchCredentials, query = {}, { preactivate = false } = {}) {
   const credentials = buildCredentials(query, branchCredentials);
   const params = buildComprobantesParams(query);
 
-  // Fuerza activar/refrescar token antes de consultar + retry automático ante 401
+  if (preactivate) {
+    // La documentación indica que primero debemos activar el token contra Auth/login
+    await activateToken(credentials);
+  }
+
   const response = await withMonroeAuthRetry(
     credentials,
     async (token) => {
       return await fetchComprobantes(params, token);
     },
-    { refreshFirst: true }
+    {
+      // Si ya activamos el token manualmente, evitamos pedir refresh inicial duplicado
+      refreshFirst: !preactivate,
+    }
   );
 
   return {
@@ -280,6 +308,37 @@ export async function getMonroeComprobantes(branchCode, query = {}) {
     },
     response,
   };
+}
+
+export async function getMonroeComprobantes(branchCode, query = {}) {
+  const branchCredentials = await getBranchCredentials(branchCode);
+  return await fetchComprobantesForBranch(branchCredentials, query, { preactivate: false });
+}
+
+export async function getMonroeComprobantesSlim(branchCode, query = {}) {
+  const full = await getMonroeComprobantes(branchCode, query);
+  return {
+    provider: 'monroe',
+    branch: full.branch,
+    data: mapComprobantesToSlim(full),
+  };
+}
+
+export async function getMonroeComprobantesForAllBranches(query = {}) {
+  const branches = await listMonroeBranches();
+  const results = [];
+
+  for (const branch of branches) {
+    const branchCredentials = await getBranchCredentials(branch);
+    const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
+    results.push({
+      provider: 'monroe',
+      branch: full.branch,
+      data: mapComprobantesToSlim(full),
+    });
+  }
+
+  return results;
 }
 
 export async function getMonroeComprobanteDetalle(branchCode, comprobanteId, query = {}) {
@@ -372,5 +431,7 @@ export async function monroeLoginProbe(branchCode, query = {}) {
 export default {
   getMonroeComprobantes,
   getMonroeComprobanteDetalle,
+  getMonroeComprobantesSlim,
+  getMonroeComprobantesForAllBranches,
   monroeLoginProbe,
 };
