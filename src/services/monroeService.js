@@ -8,6 +8,7 @@ import {
   getBranchCredentials,
   listMonroeBranches,
 } from '../repositories/branchCredentialsRepository.js';
+import { replaceAllMonroeComprobantes } from '../repositories/monroeComprobantesRepository.js';
 import {
   ensureMaxRange,
 } from '../utils/isoDate.js';
@@ -368,6 +369,8 @@ export async function getMonroeComprobantesForAllBranches(query = {}) {
       throw e; // otros errores sí rompen
     }
   }
+
+  await replaceAllMonroeComprobantes(results);
 
   return { results, skipped };
 }
