@@ -59,6 +59,109 @@ function getFirst(obj, paths) {
   return undefined;
 }
 
+const TOTAL_IMPUESTOS_TEMPLATES = [
+  { tipo: 'IVA', descripcion: 'I.V.A.                     21%' },
+  { tipo: 'PER', descripcion: 'Perc. I.V.A. R.G. 3337      3%' },
+  { tipo: 'PER', descripcion: 'Perc Mun Com,Ind y Serv 0.6%' }
+];
+
+const DETALLE_IMPUESTOS_TEMPLATES = [
+  { tipo: 'IVA', descripcion: 'I.V.A.                     21%', tasa: 21 },
+  { tipo: 'PER', descripcion: 'Perc. I.V.A. R.G. 3337      3%', tasa: 3 },
+  { tipo: 'PER', descripcion: 'Perc Mun Com,Ind y Serv 0.6%', tasa: 0.6 }
+];
+
+function toNumberOrNull(value) {
+  if (value == null || value === '') return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function normalizeImpuesto(raw) {
+  if (!raw || typeof raw !== 'object') return {};
+  const tasaValue =
+    raw?.tasa ??
+    raw?.porcentaje ??
+    raw?.alicuota ??
+    raw?.tasaImpuesto ??
+    raw?.tasa_impuesto;
+  const importeValue =
+    raw?.importe ??
+    raw?.monto ??
+    raw?.valor ??
+    raw?.importe_total ??
+    raw?.importeTotal ??
+    raw?.importe_impuesto ??
+    raw?.importeImpuesto;
+  return {
+    tipo: raw?.tipo ?? raw?.Tipo ?? raw?.codigo ?? null,
+    descripcion:
+      raw?.descripcion ??
+      raw?.Descripcion ??
+      raw?.detalle ??
+      raw?.detalles ??
+      null,
+    tasa: toNumberOrNull(tasaValue),
+    importe: toNumberOrNull(importeValue)
+  };
+}
+
+function normalizeDescripcion(value) {
+  return typeof value === 'string' ? value.trim() : undefined;
+}
+
+function alignImpuestos(rawList, templates) {
+  const normalizedList = Array.isArray(rawList)
+    ? rawList.map((imp) => normalizeImpuesto(imp))
+    : [];
+
+  const remaining = [...normalizedList];
+
+  const result = templates.map((tpl) => {
+    const matchIndex = remaining.findIndex((imp) => {
+      const descNormalized = normalizeDescripcion(imp.descripcion);
+      const tplDesc = normalizeDescripcion(tpl.descripcion);
+      const sameDesc = descNormalized && tplDesc && descNormalized === tplDesc;
+      const sameTipo = imp.tipo && tpl.tipo && imp.tipo === tpl.tipo;
+      const sameTasa = Object.prototype.hasOwnProperty.call(tpl, 'tasa')
+        ? imp.tasa == null || toNumberOrNull(tpl.tasa) === toNumberOrNull(imp.tasa)
+        : true;
+      return sameDesc || (sameTipo && sameTasa);
+    });
+
+    const match = matchIndex >= 0 ? remaining.splice(matchIndex, 1)[0] : null;
+
+    const base = {
+      tipo: match?.tipo ?? tpl.tipo ?? null,
+      descripcion: match?.descripcion ?? tpl.descripcion ?? null
+    };
+
+    if (Object.prototype.hasOwnProperty.call(tpl, 'tasa')) {
+      base.tasa = match?.tasa ?? null;
+    }
+
+    base.importe = match?.importe ?? null;
+
+    return base;
+  });
+
+  return result.concat(
+    remaining.map((imp) => {
+      const extra = {
+        tipo: imp.tipo ?? null,
+        descripcion: imp.descripcion ?? null,
+        importe: imp.importe ?? null
+      };
+
+      if (imp.tasa != null) {
+        extra.tasa = imp.tasa;
+      }
+
+      return extra;
+    })
+  );
+}
+
 /** ----------------- LISTA ----------------- **/
 
 /** Lista full (se mantiene) */
@@ -208,6 +311,14 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
         'comprobante.Total'
       ]) || {};
 
+    const totalImpuestosRaw = Array.isArray(totalRaw?.arrayImpuestos)
+      ? totalRaw.arrayImpuestos
+      : Array.isArray(totalRaw?.array_impuestos)
+      ? totalRaw.array_impuestos
+      : Array.isArray(totalRaw?.impuestos)
+      ? totalRaw.impuestos
+      : [];
+
     const total = {
       lineas: totalRaw?.lineas ?? totalRaw?.cant_lineas ?? null,
       unidades: totalRaw?.unidades ?? totalRaw?.cant_unidades ?? null,
@@ -223,13 +334,7 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
         totalRaw?.otros ??
         null,
       total: totalRaw?.total ?? null,
-      arrayImpuestos: Array.isArray(totalRaw?.arrayImpuestos)
-        ? totalRaw.arrayImpuestos
-        : Array.isArray(totalRaw?.array_impuestos)
-        ? totalRaw.array_impuestos
-        : Array.isArray(totalRaw?.impuestos)
-        ? totalRaw.impuestos
-        : []
+      arrayImpuestos: alignImpuestos(totalImpuestosRaw, TOTAL_IMPUESTOS_TEMPLATES)
     };
 
     let itemsRaw = getFirst(resp, [
@@ -256,12 +361,7 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
         (Array.isArray(it?.impuestos) && it.impuestos) ||
         [];
 
-      const arrayImpuestos = impuestos.map((imp) => ({
-        tipo: imp?.tipo ?? null,
-        descripcion: imp?.descripcion ?? null,
-        tasa: imp?.tasa ?? null,
-        importe: imp?.importe ?? null
-      }));
+      const arrayImpuestos = alignImpuestos(impuestos, DETALLE_IMPUESTOS_TEMPLATES);
 
       const base = pick(it, [
         'item_id',
