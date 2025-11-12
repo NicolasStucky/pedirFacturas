@@ -10,6 +10,17 @@ const cfg = {
     password: process.env.DB_PASS,
     name: process.env.DB_NAME,
   },
+  monroeDatabase: {
+    host: process.env.DB_HOST_MONROE ?? process.env.DB_HOST,
+    port: process.env.DB_PORT_MONROE
+      ? Number(process.env.DB_PORT_MONROE)
+      : process.env.DB_PORT
+      ? Number(process.env.DB_PORT)
+      : undefined,
+    user: process.env.DB_USER_MONROE ?? process.env.DB_USER,
+    password: process.env.DB_PASS_MONROE ?? process.env.DB_PASS,
+    name: process.env.DB_NAME_MONROE ?? process.env.DB_NAME,
+  },
   providers: {
     suizo: {
       wsdlUrl:

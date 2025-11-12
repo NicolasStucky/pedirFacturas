@@ -51,9 +51,10 @@ export function parseISO8601(input) {
   return toUtcMidnight(parsed);
 }
 
-export function ensureMaxRange(desde, hasta, maxDays = 6) {
+export function ensureMaxRange(desde, hasta, maxDays = 6, options = {}) {
   const start = parseISO8601(desde);
   const end = parseISO8601(hasta);
+  const { enforceRecency = true } = options;
 
   if (end < start) {
     const error = new Error('fechaHasta debe ser igual o posterior a fechaDesde');
@@ -68,11 +69,13 @@ export function ensureMaxRange(desde, hasta, maxDays = 6) {
     throw error;
   }
 
-  const earliestAllowed = getEarliestAllowed(maxDays);
-  if (start < earliestAllowed) {
-    const error = new Error(`Solo se admiten fechas dentro de los últimos ${maxDays} días`);
-    error.status = 400;
-    throw error;
+  if (enforceRecency) {
+    const earliestAllowed = getEarliestAllowed(maxDays);
+    if (start < earliestAllowed) {
+      const error = new Error(`Solo se admiten fechas dentro de los últimos ${maxDays} días`);
+      error.status = 400;
+      throw error;
+    }
   }
 
   return { start, end };

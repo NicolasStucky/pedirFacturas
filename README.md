@@ -43,6 +43,13 @@ DB_PORT=
 DB_USER=
 DB_PASS=
 DB_NAME=
+
+# Base dedicada para comprobantes de Monroe
+DB_HOST_MONROE=
+DB_PORT_MONROE=
+DB_USER_MONROE=
+DB_PASS_MONROE=
+DB_NAME_MONROE=
 ```
 
 Cada endpoint de proveedor requiere que indiques la sucursal directamente en la ruta, por ejemplo `/api/providers/monroe/SA1/comprobantes`. La API buscará en la tabla `credenciales_droguerias` de la base de datos las credenciales correspondientes a ese código de sucursal.
@@ -176,6 +183,13 @@ DB_PORT=
 DB_USER=
 DB_PASS=
 DB_NAME=
+
+# Base para comprobantes de Monroe
+DB_HOST_MONROE=
+DB_PORT_MONROE=
+DB_USER_MONROE=
+DB_PASS_MONROE=
+DB_NAME_MONROE=
 
 # Suizo
 SUIZO_WSDL_URL=
