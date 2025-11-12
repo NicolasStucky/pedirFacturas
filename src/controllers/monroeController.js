@@ -59,25 +59,107 @@ function getFirst(obj, paths) {
   return undefined;
 }
 
-/** Busca un impuesto por tipo/jurisdicción y normaliza su forma */
-function findTax(arrayImpuestos, tipo, jurisdiccion) {
-  if (!Array.isArray(arrayImpuestos)) return null;
-  const found = arrayImpuestos.find((t) => {
-    const okTipo = String(t?.tipo ?? '').toUpperCase() === String(tipo).toUpperCase();
-    const okJur = jurisdiccion
-      ? String(t?.jurisdiccion ?? '').toUpperCase() === String(jurisdiccion).toUpperCase()
-      : true;
-    return okTipo && okJur;
-  });
-  if (!found) return null;
+const TOTAL_IMPUESTOS_TEMPLATES = [
+  { tipo: 'IVA', descripcion: 'I.V.A.                     21%' },
+  { tipo: 'PER', descripcion: 'Perc. I.V.A. R.G. 3337      3%' },
+  { tipo: 'PER', descripcion: 'Perc Mun Com,Ind y Serv 0.6%' }
+];
+
+const DETALLE_IMPUESTOS_TEMPLATES = [
+  { tipo: 'IVA', descripcion: 'I.V.A.                     21%', tasa: 21 },
+  { tipo: 'PER', descripcion: 'Perc. I.V.A. R.G. 3337      3%', tasa: 3 },
+  { tipo: 'PER', descripcion: 'Perc Mun Com,Ind y Serv 0.6%', tasa: 0.6 }
+];
+
+function toNumberOrNull(value) {
+  if (value == null || value === '') return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function normalizeImpuesto(raw) {
+  if (!raw || typeof raw !== 'object') return {};
+  const tasaValue =
+    raw?.tasa ??
+    raw?.porcentaje ??
+    raw?.alicuota ??
+    raw?.tasaImpuesto ??
+    raw?.tasa_impuesto;
+  const importeValue =
+    raw?.importe ??
+    raw?.monto ??
+    raw?.valor ??
+    raw?.importe_total ??
+    raw?.importeTotal ??
+    raw?.importe_impuesto ??
+    raw?.importeImpuesto;
   return {
-    tipo: found.tipo ?? null,
-    jurisdiccion: found.jurisdiccion ?? null,
-    provincia: found.provincia ?? null,
-    descripcion: found.descripcion ?? null,
-    tasa: found.tasa ?? null,
-    importe: found.importe ?? null
+    tipo: raw?.tipo ?? raw?.Tipo ?? raw?.codigo ?? null,
+    descripcion:
+      raw?.descripcion ??
+      raw?.Descripcion ??
+      raw?.detalle ??
+      raw?.detalles ??
+      null,
+    tasa: toNumberOrNull(tasaValue),
+    importe: toNumberOrNull(importeValue)
   };
+}
+
+function normalizeDescripcion(value) {
+  return typeof value === 'string' ? value.trim() : undefined;
+}
+
+function alignImpuestos(rawList, templates) {
+  const normalizedList = Array.isArray(rawList)
+    ? rawList.map((imp) => normalizeImpuesto(imp))
+    : [];
+
+  const remaining = [...normalizedList];
+
+  const result = templates.map((tpl) => {
+    const matchIndex = remaining.findIndex((imp) => {
+      const descNormalized = normalizeDescripcion(imp.descripcion);
+      const tplDesc = normalizeDescripcion(tpl.descripcion);
+      const sameDesc = descNormalized && tplDesc && descNormalized === tplDesc;
+      const sameTipo = imp.tipo && tpl.tipo && imp.tipo === tpl.tipo;
+      const sameTasa = Object.prototype.hasOwnProperty.call(tpl, 'tasa')
+        ? imp.tasa == null || toNumberOrNull(tpl.tasa) === toNumberOrNull(imp.tasa)
+        : true;
+      return sameDesc || (sameTipo && sameTasa);
+    });
+
+    const match = matchIndex >= 0 ? remaining.splice(matchIndex, 1)[0] : null;
+
+    const base = {
+      tipo: match?.tipo ?? tpl.tipo ?? null,
+      descripcion: match?.descripcion ?? tpl.descripcion ?? null
+    };
+
+    if (Object.prototype.hasOwnProperty.call(tpl, 'tasa')) {
+      base.tasa = match?.tasa ?? null;
+    }
+
+    base.importe = match?.importe ?? null;
+
+    return base;
+  });
+
+  return result.concat(
+    remaining.map((imp) => {
+      const extra = {
+        tipo: imp.tipo ?? null,
+        descripcion: imp.descripcion ?? null,
+        importe: imp.importe ?? null
+      };
+
+      if (imp.tasa != null) {
+        extra.tasa = imp.tasa;
+      }
+
+      return extra;
+    })
+  );
 }
 
 /** ----------------- LISTA ----------------- **/
@@ -141,10 +223,9 @@ export async function listMonroeComprobantesSlim(req, res, next) {
  *
  * Devuelve:
  * {
- *   provider: 'monroe',
- *   branch: 'SA3',
- *   cabecera: { codigo: '...' },                // solo Cabecera.Autorizacion.codigo
- *   detalle: [ { ...item base..., arrayImpuestos: [IB, MUNICIPAL, IVA] } ]
+ *   Cabecera: { ... },
+ *   Total: { ... },
+ *   Detalle: { arrayItems: [ ... ] }
  * }
  */
 export async function getMonroeComprobanteDetalleController(req, res, next) {
@@ -166,76 +247,122 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
     const full = await getMonroeComprobanteDetalle(branch, comprobanteId, req.query);
     const resp = full?.response ?? {};
 
-    // Cabecera tolerando variantes
-    const cab = getFirst(resp, [
-      'Cabecera',
-      'Comprobante.Cabecera',
-      'comprobante.Cabecera'
-    ]) || {};
+    const cabeceraRaw =
+      getFirst(resp, [
+        'Cabecera',
+        'Comprobante.Cabecera',
+        'comprobante.Cabecera'
+      ]) || {};
 
-    const codigo = cab?.Autorizacion?.codigo ?? null;
+    const resumenRaw = cabeceraRaw?.Resumen ?? cabeceraRaw?.resumen ?? {};
+    const autorizacionRaw = cabeceraRaw?.Autorizacion ?? cabeceraRaw?.autorizacion ?? {};
 
-    // Detalle tolerando variantes
-    let items = getFirst(resp, [
+    const cabecera = {
+      codigo_comprobante:
+        cabeceraRaw?.codigo_comprobante ??
+        cabeceraRaw?.codigoComprobante ??
+        cabeceraRaw?.codigo ??
+        null,
+      tipo: cabeceraRaw?.tipo ?? null,
+      letra: cabeceraRaw?.letra ?? null,
+      punto_de_venta:
+        cabeceraRaw?.punto_de_venta ??
+        cabeceraRaw?.puntoDeVenta ??
+        cabeceraRaw?.pto_venta ??
+        cabeceraRaw?.ptoVenta ??
+        null,
+      numero: cabeceraRaw?.numero ?? cabeceraRaw?.nro ?? null,
+      fecha: cabeceraRaw?.fecha ?? null,
+      moneda: cabeceraRaw?.moneda ?? null,
+      termino_de_pago:
+        cabeceraRaw?.termino_de_pago ??
+        cabeceraRaw?.terminoDePago ??
+        cabeceraRaw?.termino_pago ??
+        null,
+      pdf: cabeceraRaw?.pdf ?? cabeceraRaw?.url_pdf ?? cabeceraRaw?.link_pdf ?? null,
+      tipo_pedido:
+        cabeceraRaw?.tipo_pedido ??
+        cabeceraRaw?.tipoPedido ??
+        cabeceraRaw?.tipo_ped ??
+        null,
+      Resumen: {
+        numero: resumenRaw?.numero ?? resumenRaw?.nro ?? null,
+        fecha_cierre:
+          resumenRaw?.fecha_cierre ??
+          resumenRaw?.fechaCierre ??
+          resumenRaw?.cierre ??
+          null
+      },
+      Autorizacion: {
+        tipo: autorizacionRaw?.tipo ?? null,
+        codigo: autorizacionRaw?.codigo ?? autorizacionRaw?.cod ?? null,
+        vencimiento:
+          autorizacionRaw?.vencimiento ??
+          autorizacionRaw?.fecha_vencimiento ??
+          autorizacionRaw?.fechaVencimiento ??
+          null
+      }
+    };
+
+    const totalRaw =
+      getFirst(resp, [
+        'Total',
+        'Comprobante.Total',
+        'comprobante.Total'
+      ]) || {};
+
+    const totalImpuestosRaw = Array.isArray(totalRaw?.arrayImpuestos)
+      ? totalRaw.arrayImpuestos
+      : Array.isArray(totalRaw?.array_impuestos)
+      ? totalRaw.array_impuestos
+      : Array.isArray(totalRaw?.impuestos)
+      ? totalRaw.impuestos
+      : [];
+
+    const total = {
+      lineas: totalRaw?.lineas ?? totalRaw?.cant_lineas ?? null,
+      unidades: totalRaw?.unidades ?? totalRaw?.cant_unidades ?? null,
+      bruto: totalRaw?.bruto ?? null,
+      descuento: totalRaw?.descuento ?? null,
+      neto: totalRaw?.neto ?? null,
+      exento: totalRaw?.exento ?? null,
+      gravado: totalRaw?.gravado ?? null,
+      iva: totalRaw?.iva ?? totalRaw?.importe_iva ?? null,
+      otros_impuestos:
+        totalRaw?.otros_impuestos ??
+        totalRaw?.otrosImpuestos ??
+        totalRaw?.otros ??
+        null,
+      total: totalRaw?.total ?? null,
+      arrayImpuestos: alignImpuestos(totalImpuestosRaw, TOTAL_IMPUESTOS_TEMPLATES)
+    };
+
+    let itemsRaw = getFirst(resp, [
       'Detalle.arrayItems',
       'Comprobante.Detalle.arrayItems',
       'Detalle',
       'Comprobante.Detalle'
     ]);
 
-    if (!Array.isArray(items)) {
+    if (!Array.isArray(itemsRaw)) {
       const maybeArray =
-        items?.items ||
-        items?.array_items ||
-        items?.ArrayItems ||
-        items?.detalle ||
-        items?.lineas;
-      items = Array.isArray(maybeArray) ? maybeArray : [];
+        itemsRaw?.items ||
+        itemsRaw?.array_items ||
+        itemsRaw?.ArrayItems ||
+        itemsRaw?.detalle ||
+        itemsRaw?.lineas;
+      itemsRaw = Array.isArray(maybeArray) ? maybeArray : [];
     }
 
-    // Normalización de items: dejar base + arrayImpuestos SIEMPRE con 3 entradas (IB → MUNICIPAL → IVA)
-    const detalleLimpio = items.map((it) => {
-      // Busco impuestos en distintas variantes de nombre
-      const taxes =
+    const arrayItems = itemsRaw.map((it) => {
+      const impuestos =
         (Array.isArray(it?.arrayImpuestos) && it.arrayImpuestos) ||
         (Array.isArray(it?.array_impuestos) && it.array_impuestos) ||
-        (Array.isArray(it?.Impuestos) && it.Impuestos) ||
         (Array.isArray(it?.impuestos) && it.impuestos) ||
         [];
 
-      const taxIB = findTax(taxes, 'IB', 'PROV');
-      const taxMUN = findTax(taxes, 'PER', 'MUN');
-      const taxIVA = findTax(taxes, 'IVA', 'NAC');
+      const arrayImpuestos = alignImpuestos(impuestos, DETALLE_IMPUESTOS_TEMPLATES);
 
-      // Construyo SIEMPRE las 3 entradas, con nulls cuando no existan
-      const arrayImpuestos = [
-        {
-          tipo: 'IB',
-          jurisdiccion: 'PROV',
-          provincia: taxIB?.provincia ?? null,
-          descripcion: taxIB?.descripcion ?? null,
-          tasa: taxIB?.tasa ?? null,
-          importe: taxIB?.importe ?? null
-        },
-        {
-          tipo: 'MUNICIPAL',
-          jurisdiccion: 'MUN',
-          provincia: taxMUN?.provincia ?? null,
-          descripcion: taxMUN?.descripcion ?? null,
-          tasa: taxMUN?.tasa ?? null,
-          importe: taxMUN?.importe ?? null
-        },
-        {
-          tipo: 'IVA',
-          jurisdiccion: 'NAC',
-          provincia: taxIVA?.provincia ?? null,
-          descripcion: taxIVA?.descripcion ?? null,
-          tasa: taxIVA?.tasa ?? null,
-          importe: taxIVA?.importe ?? null
-        }
-      ];
-
-      // Base: SOLO los campos del ítem que querés conservar
       const base = pick(it, [
         'item_id',
         'codigo_barra',
@@ -248,7 +375,6 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
         'neto',
         'total',
         'refer_pedido'
-        // NO incluimos arrayLotes en la salida final (según tu ejemplo)
       ]);
 
       return {
@@ -257,11 +383,14 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
       };
     });
 
+    const detalle = {
+      arrayItems
+    };
+
     res.json({
-      provider: 'monroe',
-      branch,
-      cabecera: { codigo },
-      detalle: detalleLimpio
+      Cabecera: cabecera,
+      Total: total,
+      Detalle: detalle
     });
   } catch (error) {
     next(error);
