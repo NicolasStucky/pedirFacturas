@@ -132,8 +132,8 @@ function alignImpuestos(rawList, templates) {
     const match = matchIndex >= 0 ? remaining.splice(matchIndex, 1)[0] : null;
 
     const base = {
-      tipo: match?.tipo ?? tpl.tipo ?? null,
-      descripcion: match?.descripcion ?? tpl.descripcion ?? null
+      tipo: match?.tipo ?? null,
+      descripcion: match?.descripcion ?? null
     };
 
     if (Object.prototype.hasOwnProperty.call(tpl, 'tasa')) {
