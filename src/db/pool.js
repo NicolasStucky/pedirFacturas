@@ -21,7 +21,7 @@ function resolvePoolConfig() {
 
   if (!db.host || !db.user || !db.name) {
     const error = new Error(
-      'Debe configurar DB_HOST, DB_USER y DB_NAME para acceder a las credenciales de las sucursales'
+      'Debe configurar DB_HOST_MONROE, DB_USER_MONROE y DB_NAME_MONROE para acceder a las credenciales de las sucursales'
     );
     error.status = 500;
     throw error;

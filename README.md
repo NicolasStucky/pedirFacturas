@@ -178,11 +178,11 @@ Variables relevantes en `.env`:
 PORT=3000
 
 # Base de datos de credenciales
-DB_HOST=
-DB_PORT=
-DB_USER=
-DB_PASS=
-DB_NAME=
+DB_HOST_MONROE=
+DB_PORT_MONROE=
+DB_USER_MONROE=
+DB_PASS_MONROE=
+DB_NAME_MONROE=
 
 # Base para comprobantes de Monroe
 DB_HOST_MONROE=
