@@ -4,13 +4,19 @@ import {
   fetchComprobantes,
   login,
 } from '../clients/monroeClient.js';
-import { getBranchCredentials } from '../repositories/branchCredentialsRepository.js';
+import {
+  getBranchCredentials,
+  listMonroeBranches,
+} from '../repositories/branchCredentialsRepository.js';
 import {
   ensureMaxRange,
-  getDefaultRange,
 } from '../utils/isoDate.js';
 
 const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
+const FIXED_DEFAULT_RANGE = Object.freeze({
+  desde: '2025-10-01',
+  hasta: '2025-10-07',
+});
 
 /**
  * Cache de tokens por combinación de credenciales.
@@ -226,7 +232,7 @@ function sanitizeCredentials(credentials) {
  * Parámetros de consulta
  * ============================ */
 function buildComprobantesParams(query = {}) {
-  const defaults = getDefaultRange(MAX_RANGE_DAYS);
+  const defaults = FIXED_DEFAULT_RANGE;
 
   // tomar de la query si vienen; si no, usar defaults
   const fechaDesde = normalizeString(
@@ -252,6 +258,22 @@ function buildComprobantesParams(query = {}) {
   if (letra) params.letra = letra;
 
   return params;
+}
+
+function mapComprobantesToSlim(full) {
+  const customerRef = full?.request?.credentials?.customerReference ?? null;
+  const items = Array.isArray(full?.response?.Comprobantes)
+    ? full.response.Comprobantes
+    : [];
+
+  return items.map((it) => {
+    const cab = it?.Comprobante?.Cabecera ?? it?.Cabecera ?? {};
+    return {
+      customer_reference: customerRef,
+      fecha: cab?.fecha ?? null,
+      codigo_busqueda: cab?.codigo_busqueda ?? cab?.codigoBusqueda ?? null,
+    };
+  });
 }
 
 /* ============================
@@ -280,6 +302,27 @@ export async function getMonroeComprobantes(branchCode, query = {}) {
     },
     response,
   };
+}
+
+export async function getMonroeComprobantesSlim(branchCode, query = {}) {
+  const full = await getMonroeComprobantes(branchCode, query);
+  return {
+    provider: 'monroe',
+    branch: full.branch,
+    data: mapComprobantesToSlim(full),
+  };
+}
+
+export async function getMonroeComprobantesForAllBranches(query = {}) {
+  const branches = await listMonroeBranches();
+  const results = [];
+
+  for (const branch of branches) {
+    const slim = await getMonroeComprobantesSlim(branch, query);
+    results.push(slim);
+  }
+
+  return results;
 }
 
 export async function getMonroeComprobanteDetalle(branchCode, comprobanteId, query = {}) {
@@ -372,5 +415,7 @@ export async function monroeLoginProbe(branchCode, query = {}) {
 export default {
   getMonroeComprobantes,
   getMonroeComprobanteDetalle,
+  getMonroeComprobantesSlim,
+  getMonroeComprobantesForAllBranches,
   monroeLoginProbe,
 };
