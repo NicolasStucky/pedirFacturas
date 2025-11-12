@@ -12,10 +12,10 @@ import {
   ensureMaxRange,
 } from '../utils/isoDate.js';
 
-const MAX_RANGE_DAYS = 6; // 7 días corridos incluyendo límites
+const MAX_RANGE_DAYS = 7; // 7 días corridos incluyendo límites
 const FIXED_DEFAULT_RANGE = Object.freeze({
-  desde: '2025-10-01',
-  hasta: '2025-10-06',
+  desde: '2025-11-06',
+  hasta: '2025-11-12',
 });
 
 /**
