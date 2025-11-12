@@ -8,24 +8,16 @@ import {
   getBranchCredentials,
   listMonroeBranches,
 } from '../repositories/branchCredentialsRepository.js';
+import { replaceAllMonroeComprobantes } from '../repositories/monroeComprobantesRepository.js';
 import {
   ensureMaxRange,
 } from '../utils/isoDate.js';
 
 const MAX_RANGE_DAYS = 6; // política Monroe
 
-function todayYMD(offsetDays = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${d.getFullYear()}-${mm}-${dd}`;
-}
-
-// Últimos 6 días (incluye hoy)
 const FIXED_DEFAULT_RANGE = Object.freeze({
-  desde: todayYMD(-5),
-  hasta: todayYMD(0),
+  desde: '2025-10-01',
+  hasta: '2025-10-06',
 });
 
 /**
@@ -267,7 +259,7 @@ function buildComprobantesParams(query = {}) {
   ) ?? defaults.hasta;
 
   // valida rango máximo permitido
-  ensureMaxRange(fechaDesde, fechaHasta, MAX_RANGE_DAYS);
+  ensureMaxRange(fechaDesde, fechaHasta, MAX_RANGE_DAYS, { enforceRecency: false });
 
   const params = { fechaDesde, fechaHasta };
 
@@ -377,6 +369,8 @@ export async function getMonroeComprobantesForAllBranches(query = {}) {
       throw e; // otros errores sí rompen
     }
   }
+
+  await replaceAllMonroeComprobantes(results);
 
   return { results, skipped };
 }
