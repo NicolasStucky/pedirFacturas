@@ -3,6 +3,44 @@ import { getPool } from '../db/pool.js';
 const cache = new Map();
 let monroeBranchesCache;
 
+function parseBranchSortKey(code) {
+  const match = code.match(/^([A-Z]+?)(\d+)([A-Z]*)$/i);
+  if (!match) {
+    return {
+      prefix: code,
+      number: Number.NaN,
+      suffix: '',
+    };
+  }
+
+  return {
+    prefix: match[1]?.toUpperCase() ?? code,
+    number: Number(match[2]),
+    suffix: match[3]?.toUpperCase() ?? '',
+  };
+}
+
+function compareBranches(a, b) {
+  const keyA = parseBranchSortKey(a);
+  const keyB = parseBranchSortKey(b);
+
+  if (keyA.prefix !== keyB.prefix) {
+    return keyA.prefix.localeCompare(keyB.prefix);
+  }
+
+  const numA = Number.isFinite(keyA.number) ? keyA.number : Number.POSITIVE_INFINITY;
+  const numB = Number.isFinite(keyB.number) ? keyB.number : Number.POSITIVE_INFINITY;
+  if (numA !== numB) {
+    return numA - numB;
+  }
+
+  if (keyA.suffix !== keyB.suffix) {
+    return keyA.suffix.localeCompare(keyB.suffix);
+  }
+
+  return a.localeCompare(b);
+}
+
 export function normalizeBranchCode(branchCode) {
   if (branchCode == null) return null;
   const trimmed = String(branchCode).trim();
@@ -109,11 +147,14 @@ export async function listMonroeBranches() {
   const branches = rows
     .filter(r => r.monroe_ecommerce_key && r.monroe_cuenta)
     .map((row) => normalizeBranchCode(row.sucursal_codigo))
-    .filter((code) => Boolean(code))
-    .slice(0, 31); // limitar a 31 sucursales
+    .filter((code) => Boolean(code));
 
-  monroeBranchesCache = branches;
-  return branches;
+  branches.sort(compareBranches);
+
+  const limitedBranches = branches.slice(0, 31); // limitar a 31 sucursales
+
+  monroeBranchesCache = limitedBranches;
+  return limitedBranches;
 }
 
 export default {
