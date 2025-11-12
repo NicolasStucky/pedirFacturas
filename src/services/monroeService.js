@@ -279,18 +279,24 @@ function mapComprobantesToSlim(full) {
 /* ============================
  * Casos públicos del servicio
  * ============================ */
-export async function getMonroeComprobantes(branchCode, query = {}) {
-  const branchCredentials = await getBranchCredentials(branchCode);
+async function fetchComprobantesForBranch(branchCredentials, query = {}, { preactivate = false } = {}) {
   const credentials = buildCredentials(query, branchCredentials);
   const params = buildComprobantesParams(query);
 
-  // Fuerza activar/refrescar token antes de consultar + retry automático ante 401
+  if (preactivate) {
+    // La documentación indica que primero debemos activar el token contra Auth/login
+    await activateToken(credentials);
+  }
+
   const response = await withMonroeAuthRetry(
     credentials,
     async (token) => {
       return await fetchComprobantes(params, token);
     },
-    { refreshFirst: true }
+    {
+      // Si ya activamos el token manualmente, evitamos pedir refresh inicial duplicado
+      refreshFirst: !preactivate,
+    }
   );
 
   return {
@@ -302,6 +308,11 @@ export async function getMonroeComprobantes(branchCode, query = {}) {
     },
     response,
   };
+}
+
+export async function getMonroeComprobantes(branchCode, query = {}) {
+  const branchCredentials = await getBranchCredentials(branchCode);
+  return await fetchComprobantesForBranch(branchCredentials, query, { preactivate: false });
 }
 
 export async function getMonroeComprobantesSlim(branchCode, query = {}) {
@@ -318,8 +329,13 @@ export async function getMonroeComprobantesForAllBranches(query = {}) {
   const results = [];
 
   for (const branch of branches) {
-    const slim = await getMonroeComprobantesSlim(branch, query);
-    results.push(slim);
+    const branchCredentials = await getBranchCredentials(branch);
+    const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
+    results.push({
+      provider: 'monroe',
+      branch: full.branch,
+      data: mapComprobantesToSlim(full),
+    });
   }
 
   return results;
