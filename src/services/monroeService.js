@@ -8,9 +8,14 @@ import {
   getBranchCredentials,
   listMonroeBranches,
 } from '../repositories/branchCredentialsRepository.js';
-import { replaceAllMonroeComprobantes } from '../repositories/monroeComprobantesRepository.js';
+import {
+  listStoredMonroeComprobantes,
+  replaceAllMonroeComprobantes,
+} from '../repositories/monroeComprobantesRepository.js';
 import {
   ensureMaxRange,
+  formatToISODate,
+  parseISO8601,
 } from '../utils/isoDate.js';
 
 const MAX_RANGE_DAYS = 6; // política Monroe
@@ -19,6 +24,107 @@ const FIXED_DEFAULT_RANGE = Object.freeze({
   desde: '2025-10-01',
   hasta: '2025-10-06',
 });
+
+function hasExplicitRange(query = {}) {
+  return [
+    query.fechaDesde,
+    query.fechaHasta,
+    query.desde,
+    query.hasta,
+    query.from,
+    query.to,
+  ].some((value) => typeof value === 'string' && value.trim().length > 0);
+}
+
+function normalizeToIsoDate(value) {
+  if (!value) return null;
+  try {
+    return formatToISODate(value);
+  } catch (_) {
+    return null;
+  }
+}
+
+function addUtcDays(date, amount) {
+  const copy = new Date(date.getTime());
+  copy.setUTCDate(copy.getUTCDate() + amount);
+  return copy;
+}
+
+function computeNextRangeStart(storedItems = []) {
+  let latest = null;
+
+  for (const item of storedItems) {
+    const normalized = normalizeToIsoDate(item?.fecha);
+    if (!normalized) continue;
+    const parsed = parseISO8601(normalized);
+    if (!latest || parsed > latest) {
+      latest = parsed;
+    }
+  }
+
+  if (!latest) {
+    return parseISO8601(FIXED_DEFAULT_RANGE.desde);
+  }
+
+  return addUtcDays(latest, 1);
+}
+
+function generateSequentialRanges(startDate) {
+  const today = parseISO8601(formatToISODate(new Date()));
+  if (startDate > today) return [];
+
+  const ranges = [];
+  let currentStart = new Date(startDate.getTime());
+
+  while (currentStart <= today) {
+    let currentEnd = addUtcDays(currentStart, MAX_RANGE_DAYS);
+    if (currentEnd > today) {
+      currentEnd = today;
+    }
+
+    ranges.push({
+      desde: formatToISODate(currentStart),
+      hasta: formatToISODate(currentEnd),
+    });
+
+    currentStart = addUtcDays(currentEnd, 1);
+  }
+
+  return ranges;
+}
+
+function mergeSlimEntries(existing = [], additions = []) {
+  const map = new Map();
+
+  for (const entry of existing) {
+    const key = [
+      entry?.customer_reference ?? '',
+      entry?.fecha ?? '',
+      entry?.codigo_busqueda ?? '',
+    ].join('::');
+    map.set(key, {
+      customer_reference: entry?.customer_reference ?? null,
+      fecha: entry?.fecha ?? null,
+      codigo_busqueda: entry?.codigo_busqueda ?? null,
+    });
+  }
+
+  for (const entry of additions) {
+    const key = [
+      entry?.customer_reference ?? '',
+      entry?.fecha ?? '',
+      entry?.codigo_busqueda ?? '',
+    ].join('::');
+    map.set(key, {
+      customer_reference: entry?.customer_reference ?? null,
+      fecha: entry?.fecha ?? null,
+      codigo_busqueda: entry?.codigo_busqueda ?? null,
+    });
+  }
+
+  return Array.from(map.values());
+}
 
 /**
  * Cache de tokens por combinación de credenciales.
@@ -246,9 +352,8 @@ function sanitizeCredentials(credentials) {
 /* ============================
  * Parámetros de consulta
  * ============================ */
-function buildComprobantesParams(query = {}) {
-  const defaults = FIXED_DEFAULT_RANGE;
-
+function buildComprobantesParams(query = {}, defaults = FIXED_DEFAULT_RANGE) {
+  
   // tomar de la query si vienen; si no, usar defaults
   const fechaDesde = normalizeString(
     query.fechaDesde ?? query.desde ?? query.from
@@ -344,15 +449,52 @@ export async function getMonroeComprobantesForAllBranches(query = {}) {
   const results = [];
   const skipped = [];
 
+  const useCustomRange = hasExplicitRange(query) || normalizeString(query.nro_comprobante ?? query.nroComprobante);
+  let storedSlim = [];
+  let generatedRanges = [];
+
+  if (!useCustomRange) {
+    storedSlim = await listStoredMonroeComprobantes();
+    const nextStart = computeNextRangeStart(storedSlim);
+    generatedRanges = generateSequentialRanges(nextStart);
+    if (generatedRanges.length === 0) {
+      return { results: [], skipped };
+    }
+  }
+
   for (const branch of branches) {
     const branchCredentials = await getBranchCredentials(branch);
     try {
-      const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
-      results.push({
-        provider: 'monroe',
-        branch: full.branch,
-        data: mapComprobantesToSlim(full),
-      });
+      if (useCustomRange) {
+        const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
+        results.push({
+          provider: 'monroe',
+          branch: full.branch,
+          data: mapComprobantesToSlim(full),
+        });
+      } else {
+        const aggregated = [];
+        for (let index = 0; index < generatedRanges.length; index += 1) {
+          const range = generatedRanges[index];
+          const rangeQuery = {
+            ...query,
+            fechaDesde: range.desde,
+            fechaHasta: range.hasta,
+          };
+          const full = await fetchComprobantesForBranch(
+            branchCredentials,
+            rangeQuery,
+            { preactivate: index === 0 }
+          );
+          aggregated.push(...mapComprobantesToSlim(full));
+        }
+
+        results.push({
+          provider: 'monroe',
+          branch,
+          data: mergeSlimEntries([], aggregated),
+        });
+      }
     } catch (e) {
       const status = e?.status || e?.cause?.response?.status;
       const body = e?.cause?.response?.data ?? {};
@@ -370,7 +512,20 @@ export async function getMonroeComprobantesForAllBranches(query = {}) {
     }
   }
 
-  await replaceAllMonroeComprobantes(results);
+  if (useCustomRange) {
+    await replaceAllMonroeComprobantes(results);
+  } else {
+    const combined = mergeSlimEntries(
+      storedSlim,
+      results.flatMap((result) => result.data ?? [])
+    );
+
+    if (combined.length > 0) {
+      await replaceAllMonroeComprobantes([
+        { provider: 'monroe', branch: null, data: combined },
+      ]);
+    }
+  }
 
   return { results, skipped };
 }

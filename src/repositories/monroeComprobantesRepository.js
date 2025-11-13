@@ -1,16 +1,13 @@
 import { getMonroePool } from '../db/monroePool.js';
+import { formatToISODate } from '../utils/isoDate.js';
 
 function mapResultsToRows(results = []) {
   const rows = [];
 
   for (const entry of results) {
-    const branch = typeof entry?.branch === 'string' ? entry.branch.trim() : '';
-    if (!branch) continue;
-
     const data = Array.isArray(entry?.data) ? entry.data : [];
     for (const item of data) {
       rows.push([
-        branch,
         item?.customer_reference ?? null,
         item?.fecha ?? null,
         item?.codigo_busqueda ?? null,
@@ -34,7 +31,7 @@ export async function replaceAllMonroeComprobantes(results) {
       await connection.query(
         `
           INSERT INTO comprobantes_monroe
-            (comprobante_id, customer_reference, fecha, codigo_busqueda)
+            (customer_reference, fecha, codigo_busqueda)
           VALUES ?
         `,
         [rows]
@@ -54,6 +51,23 @@ export async function replaceAllMonroeComprobantes(results) {
   }
 }
 
+export async function listStoredMonroeComprobantes() {
+  const pool = await getMonroePool();
+  const [rows] = await pool.query(
+    `
+      SELECT customer_reference, fecha, codigo_busqueda
+      FROM comprobantes_monroe
+    `
+  );
+
+  return rows.map((row) => ({
+    customer_reference: row?.customer_reference ?? null,
+    fecha: row?.fecha ? formatToISODate(row.fecha) : null,
+    codigo_busqueda: row?.codigo_busqueda ?? null,
+  }));
+}
+
 export default {
   replaceAllMonroeComprobantes,
+  listStoredMonroeComprobantes,
 };
