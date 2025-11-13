@@ -7,9 +7,11 @@ function mapResultsToRows(results = []) {
   for (const entry of results) {
     const data = Array.isArray(entry?.data) ? entry.data : [];
     for (const item of data) {
+      const fechaNormalizada = normalizeFechaToMySQL(item?.fecha ?? null);
+
       rows.push([
         item?.customer_reference ?? null,
-        item?.fecha ?? null,
+        fechaNormalizada,
         item?.codigo_busqueda ?? null,
       ]);
     }
