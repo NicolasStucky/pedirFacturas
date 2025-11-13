@@ -4,13 +4,9 @@ function mapResultsToRows(results = []) {
   const rows = [];
 
   for (const entry of results) {
-    const branch = typeof entry?.branch === 'string' ? entry.branch.trim() : '';
-    if (!branch) continue;
-
     const data = Array.isArray(entry?.data) ? entry.data : [];
     for (const item of data) {
       rows.push([
-        branch,
         item?.customer_reference ?? null,
         item?.fecha ?? null,
         item?.codigo_busqueda ?? null,
@@ -34,7 +30,7 @@ export async function replaceAllMonroeComprobantes(results) {
       await connection.query(
         `
           INSERT INTO comprobantes_monroe
-            (comprobante_id, customer_reference, fecha, codigo_busqueda)
+            (customer_reference, fecha, codigo_busqueda)
           VALUES ?
         `,
         [rows]
