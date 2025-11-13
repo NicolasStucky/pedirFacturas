@@ -3,28 +3,33 @@ import 'dotenv/config';
 const cfg = {
   env: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT) || 3000,
+
+  // 🔹 Base de datos de CREDENCIALES (primera BD)
   database: {
-    host: process.env.DB_HOST_MONROE ?? process.env.DB_HOST,
-    port: process.env.DB_PORT_MONROE
-      ? Number(process.env.DB_PORT_MONROE)
-      : process.env.DB_PORT
+    host: process.env.DB_HOST ?? process.env.DB_HOST_MONROE,
+    port: process.env.DB_PORT
       ? Number(process.env.DB_PORT)
-      : undefined,
-    user: process.env.DB_USER_MONROE ?? process.env.DB_USER,
-    password: process.env.DB_PASS_MONROE ?? process.env.DB_PASS,
-    name: process.env.DB_NAME_MONROE ?? process.env.DB_NAME,
+      : process.env.DB_PORT_MONROE
+        ? Number(process.env.DB_PORT_MONROE)
+        : undefined,
+    user: process.env.DB_USER ?? process.env.DB_USER_MONROE,
+    password: process.env.DB_PASS ?? process.env.DB_PASS_MONROE,
+    name: process.env.DB_NAME ?? process.env.DB_NAME_MONROE,
   },
+
+  // 🔹 Base de datos de MONROE (segunda BD)
   monroeDatabase: {
     host: process.env.DB_HOST_MONROE ?? process.env.DB_HOST,
     port: process.env.DB_PORT_MONROE
       ? Number(process.env.DB_PORT_MONROE)
       : process.env.DB_PORT
-      ? Number(process.env.DB_PORT)
-      : undefined,
+        ? Number(process.env.DB_PORT)
+        : undefined,
     user: process.env.DB_USER_MONROE ?? process.env.DB_USER,
     password: process.env.DB_PASS_MONROE ?? process.env.DB_PASS,
     name: process.env.DB_NAME_MONROE ?? process.env.DB_NAME,
   },
+
   providers: {
     suizo: {
       wsdlUrl:
@@ -38,7 +43,7 @@ const cfg = {
       grupo: process.env.SUIZO_GRUPO ?? 'C',
       cuenta: process.env.SUIZO_CUENTA ? Number(process.env.SUIZO_CUENTA) : undefined,
       endpoint: process.env.SUIZO_ENDPOINT ?? undefined,
-      forceSoap12Headers: process.env.SUIZO_FORCE_SOAP12_HEADERS === 'true'
+      forceSoap12Headers: process.env.SUIZO_FORCE_SOAP12_HEADERS === 'true',
     },
 
     cofarsur: {
@@ -58,8 +63,9 @@ const cfg = {
 
       maxRangeDays: process.env.COFARSUR_MAX_RANGE_DAYS
         ? Number(process.env.COFARSUR_MAX_RANGE_DAYS)
-        : 6
+        : 6,
     },
+
     monroe: {
       baseUrl:
         process.env.MONROE_BASE_URL ??
@@ -73,7 +79,7 @@ const cfg = {
         : undefined,
       timeout: process.env.MONROE_TIMEOUT
         ? Number(process.env.MONROE_TIMEOUT)
-        : undefined
+        : undefined,
     },
 
     kellerhoff: {
@@ -90,9 +96,9 @@ const cfg = {
         : undefined,
       tokenTtlHours: process.env.KELLERHOFF_TOKEN_TTL_HOURS
         ? Number(process.env.KELLERHOFF_TOKEN_TTL_HOURS)
-        : undefined
-    }
-  }
+        : undefined,
+    },
+  },
 };
 
 export default cfg;
