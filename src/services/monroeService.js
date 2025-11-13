@@ -78,7 +78,9 @@ function generateSequentialRanges(startDate) {
   let currentStart = new Date(startDate.getTime());
 
   while (currentStart <= today) {
-    let currentEnd = addUtcDays(currentStart, MAX_RANGE_DAYS);
+    // El rango debe abarcar exactamente MAX_RANGE_DAYS días corridos.
+    const inclusiveSpan = Math.max(0, MAX_RANGE_DAYS - 1);
+    let currentEnd = addUtcDays(currentStart, inclusiveSpan);
     if (currentEnd > today) {
       currentEnd = today;
     }
