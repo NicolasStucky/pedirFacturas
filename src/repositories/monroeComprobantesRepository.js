@@ -1,4 +1,5 @@
 import { getMonroePool } from '../db/monroePool.js';
+import { formatToISODate } from '../utils/isoDate.js';
 
 /**
  * Normaliza fechas de Monroe al formato que entiende MySQL (YYYY-MM-DD HH:MM:SS)
@@ -109,6 +110,23 @@ export async function replaceAllMonroeComprobantes(results) {
   }
 }
 
+export async function listStoredMonroeComprobantes() {
+  const pool = await getMonroePool();
+  const [rows] = await pool.query(
+    `
+      SELECT customer_reference, fecha, codigo_busqueda
+      FROM comprobantes_monroe
+    `
+  );
+
+  return rows.map((row) => ({
+    customer_reference: row?.customer_reference ?? null,
+    fecha: row?.fecha ? formatToISODate(row.fecha) : null,
+    codigo_busqueda: row?.codigo_busqueda ?? null,
+  }));
+}
+
 export default {
   replaceAllMonroeComprobantes,
+  listStoredMonroeComprobantes,
 };
