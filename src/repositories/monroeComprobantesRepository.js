@@ -1,18 +1,49 @@
 import { getMonroePool } from '../db/monroePool.js';
+import { formatToISODate } from '../utils/isoDate.js';
+
+const DD_MM_YYYY_REGEX =
+  /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
+
+function normalizeFechaToMySQL(value) {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return formatToISODate(value);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const match = trimmed.match(DD_MM_YYYY_REGEX);
+    if (match) {
+      const [, day, month, year] = match;
+      return `${year}-${month}-${day}`;
+    }
+
+    try {
+      return formatToISODate(trimmed);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  try {
+    return formatToISODate(value);
+  } catch (_) {
+    return null;
+  }
+}
 
 function mapResultsToRows(results = []) {
   const rows = [];
 
   for (const entry of results) {
-    const branch = typeof entry?.branch === 'string' ? entry.branch.trim() : '';
-    if (!branch) continue;
-
     const data = Array.isArray(entry?.data) ? entry.data : [];
     for (const item of data) {
       rows.push([
-        branch,
         item?.customer_reference ?? null,
-        item?.fecha ?? null,
+        normalizeFechaToMySQL(item?.fecha),
         item?.codigo_busqueda ?? null,
       ]);
     }
@@ -34,7 +65,7 @@ export async function replaceAllMonroeComprobantes(results) {
       await connection.query(
         `
           INSERT INTO comprobantes_monroe
-            (comprobante_id, customer_reference, fecha, codigo_busqueda)
+            (customer_reference, fecha, codigo_busqueda)
           VALUES ?
         `,
         [rows]
@@ -54,6 +85,23 @@ export async function replaceAllMonroeComprobantes(results) {
   }
 }
 
+export async function listStoredMonroeComprobantes() {
+  const pool = await getMonroePool();
+  const [rows] = await pool.query(
+    `
+      SELECT customer_reference, fecha, codigo_busqueda
+      FROM comprobantes_monroe
+    `
+  );
+
+  return rows.map((row) => ({
+    customer_reference: row?.customer_reference ?? null,
+    fecha: row?.fecha ? formatToISODate(row.fecha) : null,
+    codigo_busqueda: row?.codigo_busqueda ?? null,
+  }));
+}
+
 export default {
   replaceAllMonroeComprobantes,
+  listStoredMonroeComprobantes,
 };
