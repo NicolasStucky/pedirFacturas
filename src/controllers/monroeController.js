@@ -278,22 +278,33 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
       arrayImpuestos: alignImpuestos(totalImpuestosRaw, TOTAL_IMPUESTOS_TEMPLATES)
     };
 
-    let itemsRaw = getFirst(resp, [
-      'Detalle.arrayItems',
-      'Comprobante.Detalle.arrayItems',
-      'Detalle',
-      'Comprobante.Detalle'
-    ]);
+    const detalleRaw =
+      getFirst(resp, [
+        'Detalle',
+        'detalle',
+        'Comprobante.Detalle',
+        'Comprobante.detalle',
+        'comprobante.Detalle',
+        'comprobante.detalle'
+      ]) || {};
 
-    if (!Array.isArray(itemsRaw)) {
-      const maybeArray =
-        itemsRaw?.items ||
-        itemsRaw?.array_items ||
-        itemsRaw?.ArrayItems ||
-        itemsRaw?.detalle ||
-        itemsRaw?.lineas;
-      itemsRaw = Array.isArray(maybeArray) ? maybeArray : [];
+    const itemsSourceCandidates = [];
+
+    if (Array.isArray(detalleRaw)) {
+      itemsSourceCandidates.push(detalleRaw);
+    } else if (detalleRaw && typeof detalleRaw === 'object') {
+      itemsSourceCandidates.push(
+        detalleRaw.arrayItems,
+        detalleRaw.array_items,
+        detalleRaw.ArrayItems,
+        detalleRaw.items,
+        detalleRaw.detalle,
+        detalleRaw.lineas
+      );
     }
+
+    const itemsRaw =
+      itemsSourceCandidates.find((candidate) => Array.isArray(candidate)) ?? [];
 
     const arrayItems = itemsRaw.map((it) => {
       const impuestos =
@@ -324,15 +335,60 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
       };
     });
 
+    const conceptosSourceCandidates = [];
+
+    if (detalleRaw && typeof detalleRaw === 'object') {
+      conceptosSourceCandidates.push(
+        detalleRaw.arrayConceptos,
+        detalleRaw.array_conceptos,
+        detalleRaw.ArrayConceptos,
+        detalleRaw.conceptos,
+        detalleRaw.arrayConcepto,
+        detalleRaw.conceptItems
+      );
+    }
+
+    const conceptosRaw =
+      conceptosSourceCandidates.find((candidate) => Array.isArray(candidate)) ?? [];
+
+    const arrayConceptos = conceptosRaw.map((concepto) =>
+      pick(concepto, ['descripcion', 'bruto', 'descuento', 'neto', 'total'])
+    );
+
     const detalle = {
       arrayItems
     };
 
-    res.json({
+    const hasConceptosField = conceptosSourceCandidates.some((candidate) =>
+      Array.isArray(candidate)
+    );
+
+    if (hasConceptosField || arrayConceptos.length > 0) {
+      detalle.arrayConceptos = arrayConceptos;
+    }
+
+    const resultadoRaw = getFirst(resp, ['Resultado', 'resultado']);
+    const resultado =
+      resultadoRaw && typeof resultadoRaw === 'object' ? { ...resultadoRaw } : null;
+
+    const referenciaDrogueria =
+      resp?.referencia_drogueria ?? resp?.referenciaDrogueria ?? null;
+
+    const payload = {
       Cabecera: cabecera,
       Total: total,
       Detalle: detalle
-    });
+    };
+
+    if (resultado) {
+      payload.Resultado = resultado;
+    }
+
+    if (referenciaDrogueria != null) {
+      payload.referencia_drogueria = referenciaDrogueria;
+    }
+
+    res.json(payload);
   } catch (error) {
     next(error);
   }
