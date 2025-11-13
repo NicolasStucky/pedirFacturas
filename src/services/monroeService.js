@@ -25,6 +25,9 @@ const FIXED_DEFAULT_RANGE = Object.freeze({
   hasta: '2025-10-06',
 });
 
+const DD_MM_YYYY_REGEX =
+  /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
+
 function hasExplicitRange(query = {}) {
   return [
     query.fechaDesde,
@@ -38,6 +41,32 @@ function hasExplicitRange(query = {}) {
 
 function normalizeToIsoDate(value) {
   if (!value) return null;
+
+  if (value instanceof Date) {
+    try {
+      return formatToISODate(value);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    const match = trimmed.match(DD_MM_YYYY_REGEX);
+    if (match) {
+      const [, day, month, year] = match;
+      return `${year}-${month}-${day}`;
+    }
+
+    try {
+      return formatToISODate(trimmed);
+    } catch (_) {
+      return null;
+    }
+  }
+
   try {
     return formatToISODate(value);
   } catch (_) {
@@ -392,7 +421,7 @@ function mapComprobantesToSlim(full) {
     const cab = it?.Comprobante?.Cabecera ?? it?.Cabecera ?? {};
     return {
       customer_reference: customerRef,
-      fecha: cab?.fecha ?? null,
+      fecha: normalizeToIsoDate(cab?.fecha) ?? null,
       codigo_busqueda: cab?.codigo_busqueda ?? cab?.codigoBusqueda ?? null,
     };
   });
