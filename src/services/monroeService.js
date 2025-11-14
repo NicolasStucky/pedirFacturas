@@ -20,10 +20,18 @@ import {
 
 const MAX_RANGE_DAYS = 6; // política Monroe
 
-const FIXED_DEFAULT_RANGE = Object.freeze({
-  desde: '2025-10-01',
-  hasta: '2025-10-06',
-});
+function getDefaultRange() {
+  const referenceDate = parseISO8601(formatToISODate(new Date()));
+  const lastAvailable = addUtcDays(referenceDate, -1);
+
+  const inclusiveSpan = Math.max(0, MAX_RANGE_DAYS - 1);
+  const start = addUtcDays(lastAvailable, -inclusiveSpan);
+
+  return {
+    desde: formatToISODate(start),
+    hasta: formatToISODate(lastAvailable),
+  };
+}
 
 const DD_MM_YYYY_REGEX =
   /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
@@ -93,7 +101,7 @@ function computeNextRangeStart(storedItems = []) {
   }
 
   if (!latest) {
-    return parseISO8601(FIXED_DEFAULT_RANGE.desde);
+    return parseISO8601(getDefaultRange().desde);
   }
 
   return addUtcDays(latest, 1);
@@ -101,17 +109,18 @@ function computeNextRangeStart(storedItems = []) {
 
 function generateSequentialRanges(startDate) {
   const today = parseISO8601(formatToISODate(new Date()));
-  if (startDate > today) return [];
+  const lastAvailable = addUtcDays(today, -1);
+  if (startDate > lastAvailable) return [];
 
   const ranges = [];
   let currentStart = new Date(startDate.getTime());
 
-  while (currentStart <= today) {
+  while (currentStart <= lastAvailable) {
     // El rango debe abarcar exactamente MAX_RANGE_DAYS días corridos.
     const inclusiveSpan = Math.max(0, MAX_RANGE_DAYS - 1);
     let currentEnd = addUtcDays(currentStart, inclusiveSpan);
-    if (currentEnd > today) {
-      currentEnd = today;
+    if (currentEnd > lastAvailable) {
+      currentEnd = lastAvailable;
     }
 
     ranges.push({
@@ -383,7 +392,7 @@ function sanitizeCredentials(credentials) {
 /* ============================
  * Parámetros de consulta
  * ============================ */
-function buildComprobantesParams(query = {}, defaults = FIXED_DEFAULT_RANGE) {
+function buildComprobantesParams(query = {}, defaults = getDefaultRange()) {
   
   // tomar de la query si vienen; si no, usar defaults
   const fechaDesde = normalizeString(

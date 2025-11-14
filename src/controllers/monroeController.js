@@ -126,7 +126,7 @@ function alignImpuestos(rawList, templates) {
   );
 }
 
-function buildComprobantePayload(full, { includeDetalle = true, branchOverride } = {}) {
+function buildComprobantePayload(full, { includeDetalle = true } = {}) {
   const resp = full?.response ?? {};
 
   const cabeceraRaw =
@@ -185,10 +185,6 @@ function buildComprobantePayload(full, { includeDetalle = true, branchOverride }
         null
     }
   };
-
-  if (branchOverride) {
-    cabecera.branch = branchOverride;
-  }
 
   const totalRaw =
     getFirst(resp, [
@@ -419,7 +415,6 @@ export async function listMonroeComprobantesCabecera(req, res, next) {
           if (!full) return null;
           const payload = buildComprobantePayload(full, {
             includeDetalle: false,
-            branchOverride: entry.branch,
           });
 
           return {
