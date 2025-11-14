@@ -30,7 +30,8 @@ app.get('/', (_req, res) => {
       monroe: {
         comprobantes: '/api/providers/monroe/:branch/comprobantes',
         comprobanteDetalle: '/api/providers/monroe/:branch/comprobantes/:comprobanteId',
-        comprobantesGeneral: '/api/providers/monroe/comprobantes/general'
+        comprobantesGeneral: '/api/providers/monroe/comprobantes/general',
+        comprobantesCabecera: '/api/providers/monroe/comprobantes/cabecera'
       },
       kellerhoff: {
         products: '/api/providers/kellerhoff/products'
