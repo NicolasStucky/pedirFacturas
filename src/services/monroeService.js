@@ -19,6 +19,9 @@ import {
 } from '../utils/isoDate.js';
 
 const MAX_RANGE_DAYS = 6; // política Monroe
+const CABECERA_DEFAULT_START = '2025-10-01 00:00:00';
+const CABECERA_RANGE_START_SUFFIX = '00:00:00';
+const CABECERA_RANGE_END_SUFFIX = '23:59:59';
 
 function getDefaultRange() {
   const referenceDate = parseISO8601(formatToISODate(new Date()));
@@ -634,22 +637,136 @@ export async function getMonroeCabecerasForAllBranches(query = {}) {
   const results = [];
   const skipped = [];
 
+  const useCustomRange =
+    hasExplicitRange(query) || normalizeString(query.nro_comprobante ?? query.nroComprobante);
+
+  const sequentialStart = useCustomRange ? null : parseISO8601(CABECERA_DEFAULT_START);
+  const sequentialRanges = useCustomRange ? [] : generateSequentialRanges(sequentialStart);
+
   for (const branch of branches) {
     const branchCredentials = await getBranchCredentials(branch);
 
     try {
-      const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
-      const identifiers = mapComprobantesToIdentifiers(full);
-      const slimEntries = mapComprobantesToSlim(full);
+      if (useCustomRange) {
+        const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
+        const identifiers = mapComprobantesToIdentifiers(full);
+        const slimEntries = mapComprobantesToSlim(full);
+        const identifierToCustomerReference = new Map();
+
+        for (const entry of slimEntries) {
+          const identifier = normalizeString(entry?.codigo_busqueda);
+          const customerRef = entry?.customer_reference ?? null;
+          if (!identifier) continue;
+          if (customerRef == null) continue;
+          if (!identifierToCustomerReference.has(identifier)) {
+            identifierToCustomerReference.set(identifier, customerRef);
+          }
+        }
+
+        const branchData = [];
+
+        for (const identifier of identifiers) {
+          try {
+            const detailFull = await fetchComprobanteDetalleForBranch(
+              branchCredentials,
+              identifier,
+              query
+            );
+
+            const customerReference =
+              (identifier && identifierToCustomerReference.get(identifier)) ??
+              slimEntries.find(
+                (entry) => normalizeString(entry?.codigo_busqueda) === normalizeString(identifier)
+              )?.customer_reference ??
+              full?.request?.credentials?.customerReference ??
+              null;
+
+            branchData.push({
+              comprobanteId: identifier,
+              customerReference,
+              full: detailFull,
+            });
+          } catch (detailError) {
+            const status = detailError?.status || detailError?.cause?.response?.status;
+            const body = detailError?.cause?.response?.data ?? {};
+            const reason = [
+              detailError?.message || '',
+              body?.mensaje,
+              body?.message,
+              body?.error?.description,
+            ]
+              .filter(Boolean)
+              .join(' ');
+
+            skipped.push({
+              branch: branchCredentials.branchCode,
+              comprobante: identifier,
+              reason: reason || undefined,
+              status: status || undefined,
+            });
+          }
+        }
+
+        results.push({
+          provider: 'monroe',
+          branch: branchCredentials.branchCode,
+          data: branchData,
+        });
+        continue;
+      }
+
+      if (sequentialRanges.length === 0) {
+        results.push({
+          provider: 'monroe',
+          branch: branchCredentials.branchCode,
+          data: [],
+        });
+        continue;
+      }
+
+      let firstFull = null;
+      const identifiers = [];
+      const seenIdentifiers = new Set();
+      const slimEntries = [];
       const identifierToCustomerReference = new Map();
 
-      for (const entry of slimEntries) {
-        const identifier = normalizeString(entry?.codigo_busqueda);
-        const customerRef = entry?.customer_reference ?? null;
-        if (!identifier) continue;
-        if (customerRef == null) continue;
-        if (!identifierToCustomerReference.has(identifier)) {
-          identifierToCustomerReference.set(identifier, customerRef);
+      for (let index = 0; index < sequentialRanges.length; index += 1) {
+        const range = sequentialRanges[index];
+        const rangeQuery = {
+          ...query,
+          fechaDesde: `${range.desde} ${CABECERA_RANGE_START_SUFFIX}`,
+          fechaHasta: `${range.hasta} ${CABECERA_RANGE_END_SUFFIX}`,
+        };
+
+        const full = await fetchComprobantesForBranch(
+          branchCredentials,
+          rangeQuery,
+          { preactivate: index === 0 }
+        );
+
+        if (!firstFull) {
+          firstFull = full;
+        }
+
+        const rangeIdentifiers = mapComprobantesToIdentifiers(full);
+        for (const identifier of rangeIdentifiers) {
+          if (!seenIdentifiers.has(identifier)) {
+            seenIdentifiers.add(identifier);
+            identifiers.push(identifier);
+          }
+        }
+
+        const rangeSlimEntries = mapComprobantesToSlim(full);
+        slimEntries.push(...rangeSlimEntries);
+
+        for (const entry of rangeSlimEntries) {
+          const identifier = normalizeString(entry?.codigo_busqueda);
+          const customerRef = entry?.customer_reference ?? null;
+          if (!identifier) continue;
+          if (customerRef == null) continue;
+          if (!identifierToCustomerReference.has(identifier)) {
+            identifierToCustomerReference.set(identifier, customerRef);
+          }
         }
       }
 
@@ -663,12 +780,13 @@ export async function getMonroeCabecerasForAllBranches(query = {}) {
             query
           );
 
+          const normalizedIdentifier = normalizeString(identifier);
           const customerReference =
-            (identifier && identifierToCustomerReference.get(identifier)) ??
+            (normalizedIdentifier && identifierToCustomerReference.get(normalizedIdentifier)) ??
             slimEntries.find(
-              (entry) => normalizeString(entry?.codigo_busqueda) === normalizeString(identifier)
+              (entry) => normalizeString(entry?.codigo_busqueda) === normalizedIdentifier
             )?.customer_reference ??
-            full?.request?.credentials?.customerReference ??
+            firstFull?.request?.credentials?.customerReference ??
             null;
 
           branchData.push({
