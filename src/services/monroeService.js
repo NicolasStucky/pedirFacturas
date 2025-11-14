@@ -19,11 +19,22 @@ import {
 } from '../utils/isoDate.js';
 
 const MAX_RANGE_DAYS = 6; // política Monroe
+const CABECERA_DEFAULT_START = '2025-10-01';
+const DEFAULT_DETALLE_BATCH_SIZE = 10;
+const MAX_DETALLE_BATCH_SIZE = 25;
 
-const FIXED_DEFAULT_RANGE = Object.freeze({
-  desde: '2025-10-01',
-  hasta: '2025-10-06',
-});
+function getDefaultRange() {
+  const referenceDate = parseISO8601(formatToISODate(new Date()));
+  const lastAvailable = addUtcDays(referenceDate, -1);
+
+  const inclusiveSpan = Math.max(0, MAX_RANGE_DAYS - 1);
+  const start = addUtcDays(lastAvailable, -inclusiveSpan);
+
+  return {
+    desde: formatToISODate(start),
+    hasta: formatToISODate(lastAvailable),
+  };
+}
 
 const DD_MM_YYYY_REGEX =
   /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
@@ -80,6 +91,18 @@ function addUtcDays(date, amount) {
   return copy;
 }
 
+function chunkArray(items, chunkSize) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  const size = Number.isFinite(chunkSize) && chunkSize > 0 ? Math.floor(chunkSize) : items.length;
+  if (size >= items.length) return [items.slice()];
+
+  const chunks = [];
+  for (let start = 0; start < items.length; start += size) {
+    chunks.push(items.slice(start, start + size));
+  }
+  return chunks;
+}
+
 function computeNextRangeStart(storedItems = []) {
   let latest = null;
 
@@ -93,7 +116,7 @@ function computeNextRangeStart(storedItems = []) {
   }
 
   if (!latest) {
-    return parseISO8601(FIXED_DEFAULT_RANGE.desde);
+    return parseISO8601(getDefaultRange().desde);
   }
 
   return addUtcDays(latest, 1);
@@ -101,17 +124,18 @@ function computeNextRangeStart(storedItems = []) {
 
 function generateSequentialRanges(startDate) {
   const today = parseISO8601(formatToISODate(new Date()));
-  if (startDate > today) return [];
+  const lastAvailable = addUtcDays(today, -1);
+  if (startDate > lastAvailable) return [];
 
   const ranges = [];
   let currentStart = new Date(startDate.getTime());
 
-  while (currentStart <= today) {
+  while (currentStart <= lastAvailable) {
     // El rango debe abarcar exactamente MAX_RANGE_DAYS días corridos.
     const inclusiveSpan = Math.max(0, MAX_RANGE_DAYS - 1);
     let currentEnd = addUtcDays(currentStart, inclusiveSpan);
-    if (currentEnd > today) {
-      currentEnd = today;
+    if (currentEnd > lastAvailable) {
+      currentEnd = lastAvailable;
     }
 
     ranges.push({
@@ -123,6 +147,44 @@ function generateSequentialRanges(startDate) {
   }
 
   return ranges;
+}
+
+function resolveDetalleBatchSize(query = {}, override) {
+  const candidates = [
+    override,
+    query.detalleBatchSize,
+    query.detalle_batch_size,
+    config.providers?.monroe?.detalleBatchSize,
+  ];
+
+  for (const candidate of candidates) {
+    const numeric = Number(candidate);
+    if (Number.isFinite(numeric) && numeric > 0) {
+      return Math.min(MAX_DETALLE_BATCH_SIZE, Math.max(1, Math.floor(numeric)));
+    }
+  }
+
+  return DEFAULT_DETALLE_BATCH_SIZE;
+}
+
+function isUnauthorizedMonroeError(err) {
+  const status = err?.status || err?.cause?.response?.status;
+  if (status === 401) return true;
+
+  const body = err?.cause?.response?.data ?? {};
+  const message = [
+    err?.message || '',
+    body?.mensaje,
+    body?.message,
+    body?.error?.description,
+    body?.error,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (!message) return false;
+
+  return /unauthorized/i.test(message) || /\bAPI-cli-1\b/i.test(message) || /\bAPI-cli-2\.2\b/i.test(message);
 }
 
 function mergeSlimEntries(existing = [], additions = []) {
@@ -383,7 +445,7 @@ function sanitizeCredentials(credentials) {
 /* ============================
  * Parámetros de consulta
  * ============================ */
-function buildComprobantesParams(query = {}, defaults = FIXED_DEFAULT_RANGE) {
+function buildComprobantesParams(query = {}, defaults = getDefaultRange()) {
   
   // tomar de la query si vienen; si no, usar defaults
   const fechaDesde = normalizeString(
@@ -427,6 +489,29 @@ function mapComprobantesToSlim(full) {
   });
 }
 
+function mapComprobantesToIdentifiers(full) {
+  const items = Array.isArray(full?.response?.Comprobantes)
+    ? full.response.Comprobantes
+    : [];
+
+  const seen = new Set();
+
+  return items
+    .map((it) => {
+      const cab = it?.Comprobante?.Cabecera ?? it?.Cabecera ?? {};
+      return (
+        normalizeString(cab?.codigo_busqueda ?? cab?.codigoBusqueda ?? cab?.codigo) ||
+        null
+      );
+    })
+    .filter((identifier) => {
+      if (!identifier) return false;
+      if (seen.has(identifier)) return false;
+      seen.add(identifier);
+      return true;
+    });
+}
+
 /* ============================
  * Casos públicos del servicio
  * ============================ */
@@ -439,16 +524,9 @@ async function fetchComprobantesForBranch(branchCredentials, query = {}, { preac
     await activateToken(credentials);
   }
 
-  const response = await withMonroeAuthRetry(
-    credentials,
-    async (token) => {
-      return await fetchComprobantes(params, token);
-    },
-    {
-      // Si ya activamos el token manualmente, evitamos pedir refresh inicial duplicado
-      refreshFirst: !preactivate,
-    }
-  );
+  const response = await withMonroeAuthRetry(credentials, async (token) => {
+    return await fetchComprobantes(params, token);
+  });
 
   return {
     provider: 'monroe',
@@ -459,6 +537,93 @@ async function fetchComprobantesForBranch(branchCredentials, query = {}, { preac
     },
     response,
   };
+}
+
+async function fetchComprobanteDetalleForBranch(branchCredentials, comprobanteId, query = {}) {
+  const identifier = normalizeString(comprobanteId);
+  if (!identifier) {
+    const error = new Error(
+      'Debe indicar el identificador del comprobante en la ruta (por ejemplo FC-A-0001-00000001)'
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  const credentials = buildCredentials(query, branchCredentials);
+
+  const response = await withMonroeAuthRetry(credentials, async (token) => {
+    return await fetchComprobanteDetalle(identifier, token);
+  });
+
+  return {
+    provider: 'monroe',
+    branch: branchCredentials.branchCode,
+    request: {
+      comprobanteId: identifier,
+      credentials: sanitizeCredentials(credentials),
+    },
+    response,
+  };
+}
+
+async function fetchComprobanteDetallesInBatches(
+  branchCredentials,
+  identifiers,
+  query = {},
+  { batchSize: batchSizeOverride } = {}
+) {
+  const normalized = Array.isArray(identifiers)
+    ? identifiers.map((id) => normalizeString(id)).filter(Boolean)
+    : [];
+
+  if (normalized.length === 0) {
+    return { byIdentifier: new Map(), failures: [] };
+  }
+
+  const credentials = buildCredentials(query, branchCredentials);
+  const sanitizedCredentials = sanitizeCredentials(credentials);
+  const batchSize = resolveDetalleBatchSize(query, batchSizeOverride);
+  const batches = chunkArray(normalized, batchSize);
+
+  const byIdentifier = new Map();
+  const failures = [];
+
+  for (const batch of batches) {
+    const batchResults = await withMonroeAuthRetry(credentials, async (token) => {
+      const successful = [];
+      const attemptFailures = [];
+
+      for (const identifier of batch) {
+        try {
+          const response = await fetchComprobanteDetalle(identifier, token);
+          successful.push({ identifier, response });
+        } catch (err) {
+          if (isUnauthorizedMonroeError(err)) {
+            throw err;
+          }
+
+          attemptFailures.push({ identifier, error: err });
+        }
+      }
+
+      failures.push(...attemptFailures);
+      return successful;
+    });
+
+    for (const { identifier, response } of batchResults) {
+      byIdentifier.set(identifier, {
+        provider: 'monroe',
+        branch: branchCredentials.branchCode,
+        request: {
+          comprobanteId: identifier,
+          credentials: { ...sanitizedCredentials },
+        },
+        response,
+      });
+    }
+  }
+
+  return { byIdentifier, failures };
 }
 
 export async function getMonroeComprobantes(branchCode, query = {}) {
@@ -562,36 +727,225 @@ export async function getMonroeComprobantesForAllBranches(query = {}) {
 }
 
 export async function getMonroeComprobanteDetalle(branchCode, comprobanteId, query = {}) {
-  const identifier = normalizeString(comprobanteId);
-  if (!identifier) {
-    const error = new Error(
-      'Debe indicar el identificador del comprobante en la ruta (por ejemplo FC-A-0001-00000001)'
-    );
-    error.status = 400;
-    throw error;
+  const branchCredentials = await getBranchCredentials(branchCode);
+  return await fetchComprobanteDetalleForBranch(branchCredentials, comprobanteId, query);
+}
+
+export async function getMonroeCabecerasForAllBranches(query = {}) {
+  const branches = await listMonroeBranches();
+  const results = [];
+  const skipped = [];
+
+  const useCustomRange =
+    hasExplicitRange(query) || normalizeString(query.nro_comprobante ?? query.nroComprobante);
+
+  const sequentialStart = useCustomRange ? null : parseISO8601(CABECERA_DEFAULT_START);
+  const sequentialRanges = useCustomRange ? [] : generateSequentialRanges(sequentialStart);
+
+  for (const branch of branches) {
+    const branchCredentials = await getBranchCredentials(branch);
+
+    try {
+      if (useCustomRange) {
+        const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
+        const identifiers = mapComprobantesToIdentifiers(full);
+        const slimEntries = mapComprobantesToSlim(full);
+        const identifierToCustomerReference = new Map();
+
+        for (const entry of slimEntries) {
+          const identifier = normalizeString(entry?.codigo_busqueda);
+          const customerRef = entry?.customer_reference ?? null;
+          if (!identifier) continue;
+          if (customerRef == null) continue;
+          if (!identifierToCustomerReference.has(identifier)) {
+            identifierToCustomerReference.set(identifier, customerRef);
+          }
+        }
+
+        const { byIdentifier: detailMap, failures: detailFailures } =
+          await fetchComprobanteDetallesInBatches(branchCredentials, identifiers, query);
+
+        for (const failure of detailFailures) {
+          const status = failure.error?.status || failure.error?.cause?.response?.status;
+          const body = failure.error?.cause?.response?.data ?? {};
+          const reason = [
+            failure.error?.message || '',
+            body?.mensaje,
+            body?.message,
+            body?.error?.description,
+          ]
+            .filter(Boolean)
+            .join(' ');
+
+          skipped.push({
+            branch: branchCredentials.branchCode,
+            comprobante: failure.identifier,
+            reason: reason || undefined,
+            status: status || undefined,
+          });
+        }
+
+        const branchData = [];
+
+        for (const identifier of identifiers) {
+          const normalizedIdentifier = normalizeString(identifier);
+          const detailFull = normalizedIdentifier ? detailMap.get(normalizedIdentifier) : null;
+          if (!detailFull) continue;
+
+          const customerReference =
+            (normalizedIdentifier && identifierToCustomerReference.get(normalizedIdentifier)) ??
+            slimEntries.find(
+              (entry) => normalizeString(entry?.codigo_busqueda) === normalizedIdentifier
+            )?.customer_reference ??
+            full?.request?.credentials?.customerReference ??
+            null;
+
+          branchData.push({
+            comprobanteId: identifier,
+            customerReference,
+            full: detailFull,
+          });
+        }
+
+        results.push({
+          provider: 'monroe',
+          branch: branchCredentials.branchCode,
+          data: branchData,
+        });
+        continue;
+      }
+
+      if (sequentialRanges.length === 0) {
+        results.push({
+          provider: 'monroe',
+          branch: branchCredentials.branchCode,
+          data: [],
+        });
+        continue;
+      }
+
+      let firstFull = null;
+      const identifiers = [];
+      const seenIdentifiers = new Set();
+      const slimEntries = [];
+      const identifierToCustomerReference = new Map();
+
+      for (let index = 0; index < sequentialRanges.length; index += 1) {
+        const range = sequentialRanges[index];
+        const rangeQuery = {
+          ...query,
+          fechaDesde: range.desde,
+          fechaHasta: range.hasta,
+        };
+
+        const full = await fetchComprobantesForBranch(
+          branchCredentials,
+          rangeQuery,
+          { preactivate: index === 0 }
+        );
+
+        if (!firstFull) {
+          firstFull = full;
+        }
+
+        const rangeIdentifiers = mapComprobantesToIdentifiers(full);
+        for (const identifier of rangeIdentifiers) {
+          if (!seenIdentifiers.has(identifier)) {
+            seenIdentifiers.add(identifier);
+            identifiers.push(identifier);
+          }
+        }
+
+        const rangeSlimEntries = mapComprobantesToSlim(full);
+        slimEntries.push(...rangeSlimEntries);
+
+        for (const entry of rangeSlimEntries) {
+          const identifier = normalizeString(entry?.codigo_busqueda);
+          const customerRef = entry?.customer_reference ?? null;
+          if (!identifier) continue;
+          if (customerRef == null) continue;
+          if (!identifierToCustomerReference.has(identifier)) {
+            identifierToCustomerReference.set(identifier, customerRef);
+          }
+        }
+      }
+
+      const { byIdentifier: detailMap, failures: detailFailures } =
+        await fetchComprobanteDetallesInBatches(branchCredentials, identifiers, query);
+
+      for (const failure of detailFailures) {
+        const status = failure.error?.status || failure.error?.cause?.response?.status;
+        const body = failure.error?.cause?.response?.data ?? {};
+        const reason = [
+          failure.error?.message || '',
+          body?.mensaje,
+          body?.message,
+          body?.error?.description,
+        ]
+          .filter(Boolean)
+          .join(' ');
+
+        skipped.push({
+          branch: branchCredentials.branchCode,
+          comprobante: failure.identifier,
+          reason: reason || undefined,
+          status: status || undefined,
+        });
+      }
+
+      const branchData = [];
+
+      for (const identifier of identifiers) {
+        const normalizedIdentifier = normalizeString(identifier);
+        const detailFull = normalizedIdentifier ? detailMap.get(normalizedIdentifier) : null;
+        if (!detailFull) continue;
+
+        const customerReference =
+          (normalizedIdentifier && identifierToCustomerReference.get(normalizedIdentifier)) ??
+          slimEntries.find(
+            (entry) => normalizeString(entry?.codigo_busqueda) === normalizedIdentifier
+          )?.customer_reference ??
+          firstFull?.request?.credentials?.customerReference ??
+          null;
+
+        branchData.push({
+          comprobanteId: identifier,
+          customerReference,
+          full: detailFull,
+        });
+      }
+
+      results.push({
+        provider: 'monroe',
+        branch: branchCredentials.branchCode,
+        data: branchData,
+      });
+    } catch (e) {
+      const status = e?.status || e?.cause?.response?.status;
+      const body = e?.cause?.response?.data ?? {};
+      const reason = [
+        e?.message || '',
+        body?.mensaje,
+        body?.message,
+        body?.error?.description,
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      if (
+        status === 401 ||
+        /API-cli-2\.2/i.test(reason) ||
+        /Credenciales incompletas/i.test(reason)
+      ) {
+        skipped.push({ branch: branchCredentials.branchCode, reason: reason || undefined, status });
+        continue;
+      }
+
+      throw e;
+    }
   }
 
-  const branchCredentials = await getBranchCredentials(branchCode);
-  const credentials = buildCredentials(query, branchCredentials);
-
-  // También fuerza activar/refrescar token antes de consultar + retry ante 401
-  const response = await withMonroeAuthRetry(
-    credentials,
-    async (token) => {
-      return await fetchComprobanteDetalle(identifier, token);
-    },
-    { refreshFirst: true }
-  );
-
-  return {
-    provider: 'monroe',
-    branch: branchCredentials.branchCode,
-    request: {
-      comprobanteId: identifier,
-      credentials: sanitizeCredentials(credentials),
-    },
-    response,
-  };
+  return { results, skipped };
 }
 
 /** 🔎 Diagnóstico: prueba /Auth/login con las credenciales resultantes y devuelve datos útiles. */
@@ -650,6 +1004,7 @@ export async function monroeLoginProbe(branchCode, query = {}) {
 export default {
   getMonroeComprobantes,
   getMonroeComprobanteDetalle,
+  getMonroeCabecerasForAllBranches,
   getMonroeComprobantesSlim,
   getMonroeComprobantesForAllBranches,
   monroeLoginProbe,
