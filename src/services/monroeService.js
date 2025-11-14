@@ -20,6 +20,8 @@ import {
 
 const MAX_RANGE_DAYS = 6; // política Monroe
 const CABECERA_DEFAULT_START = '2025-10-01';
+const DEFAULT_DETALLE_BATCH_SIZE = 10;
+const MAX_DETALLE_BATCH_SIZE = 25;
 
 function getDefaultRange() {
   const referenceDate = parseISO8601(formatToISODate(new Date()));
@@ -89,6 +91,18 @@ function addUtcDays(date, amount) {
   return copy;
 }
 
+function chunkArray(items, chunkSize) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  const size = Number.isFinite(chunkSize) && chunkSize > 0 ? Math.floor(chunkSize) : items.length;
+  if (size >= items.length) return [items.slice()];
+
+  const chunks = [];
+  for (let start = 0; start < items.length; start += size) {
+    chunks.push(items.slice(start, start + size));
+  }
+  return chunks;
+}
+
 function computeNextRangeStart(storedItems = []) {
   let latest = null;
 
@@ -133,6 +147,44 @@ function generateSequentialRanges(startDate) {
   }
 
   return ranges;
+}
+
+function resolveDetalleBatchSize(query = {}, override) {
+  const candidates = [
+    override,
+    query.detalleBatchSize,
+    query.detalle_batch_size,
+    config.providers?.monroe?.detalleBatchSize,
+  ];
+
+  for (const candidate of candidates) {
+    const numeric = Number(candidate);
+    if (Number.isFinite(numeric) && numeric > 0) {
+      return Math.min(MAX_DETALLE_BATCH_SIZE, Math.max(1, Math.floor(numeric)));
+    }
+  }
+
+  return DEFAULT_DETALLE_BATCH_SIZE;
+}
+
+function isUnauthorizedMonroeError(err) {
+  const status = err?.status || err?.cause?.response?.status;
+  if (status === 401) return true;
+
+  const body = err?.cause?.response?.data ?? {};
+  const message = [
+    err?.message || '',
+    body?.mensaje,
+    body?.message,
+    body?.error?.description,
+    body?.error,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (!message) return false;
+
+  return /unauthorized/i.test(message) || /\bAPI-cli-1\b/i.test(message) || /\bAPI-cli-2\.2\b/i.test(message);
 }
 
 function mergeSlimEntries(existing = [], additions = []) {
@@ -514,6 +566,66 @@ async function fetchComprobanteDetalleForBranch(branchCredentials, comprobanteId
   };
 }
 
+async function fetchComprobanteDetallesInBatches(
+  branchCredentials,
+  identifiers,
+  query = {},
+  { batchSize: batchSizeOverride } = {}
+) {
+  const normalized = Array.isArray(identifiers)
+    ? identifiers.map((id) => normalizeString(id)).filter(Boolean)
+    : [];
+
+  if (normalized.length === 0) {
+    return { byIdentifier: new Map(), failures: [] };
+  }
+
+  const credentials = buildCredentials(query, branchCredentials);
+  const sanitizedCredentials = sanitizeCredentials(credentials);
+  const batchSize = resolveDetalleBatchSize(query, batchSizeOverride);
+  const batches = chunkArray(normalized, batchSize);
+
+  const byIdentifier = new Map();
+  const failures = [];
+
+  for (const batch of batches) {
+    const batchResults = await withMonroeAuthRetry(credentials, async (token) => {
+      const successful = [];
+      const attemptFailures = [];
+
+      for (const identifier of batch) {
+        try {
+          const response = await fetchComprobanteDetalle(identifier, token);
+          successful.push({ identifier, response });
+        } catch (err) {
+          if (isUnauthorizedMonroeError(err)) {
+            throw err;
+          }
+
+          attemptFailures.push({ identifier, error: err });
+        }
+      }
+
+      failures.push(...attemptFailures);
+      return successful;
+    });
+
+    for (const { identifier, response } of batchResults) {
+      byIdentifier.set(identifier, {
+        provider: 'monroe',
+        branch: branchCredentials.branchCode,
+        request: {
+          comprobanteId: identifier,
+          credentials: { ...sanitizedCredentials },
+        },
+        response,
+      });
+    }
+  }
+
+  return { byIdentifier, failures };
+}
+
 export async function getMonroeComprobantes(branchCode, query = {}) {
   const branchCredentials = await getBranchCredentials(branchCode);
   return await fetchComprobantesForBranch(branchCredentials, query, { preactivate: false });
@@ -650,48 +762,49 @@ export async function getMonroeCabecerasForAllBranches(query = {}) {
           }
         }
 
+        const { byIdentifier: detailMap, failures: detailFailures } =
+          await fetchComprobanteDetallesInBatches(branchCredentials, identifiers, query);
+
+        for (const failure of detailFailures) {
+          const status = failure.error?.status || failure.error?.cause?.response?.status;
+          const body = failure.error?.cause?.response?.data ?? {};
+          const reason = [
+            failure.error?.message || '',
+            body?.mensaje,
+            body?.message,
+            body?.error?.description,
+          ]
+            .filter(Boolean)
+            .join(' ');
+
+          skipped.push({
+            branch: branchCredentials.branchCode,
+            comprobante: failure.identifier,
+            reason: reason || undefined,
+            status: status || undefined,
+          });
+        }
+
         const branchData = [];
 
         for (const identifier of identifiers) {
-          try {
-            const detailFull = await fetchComprobanteDetalleForBranch(
-              branchCredentials,
-              identifier,
-              query
-            );
+          const normalizedIdentifier = normalizeString(identifier);
+          const detailFull = normalizedIdentifier ? detailMap.get(normalizedIdentifier) : null;
+          if (!detailFull) continue;
 
-            const customerReference =
-              (identifier && identifierToCustomerReference.get(identifier)) ??
-              slimEntries.find(
-                (entry) => normalizeString(entry?.codigo_busqueda) === normalizeString(identifier)
-              )?.customer_reference ??
-              full?.request?.credentials?.customerReference ??
-              null;
+          const customerReference =
+            (normalizedIdentifier && identifierToCustomerReference.get(normalizedIdentifier)) ??
+            slimEntries.find(
+              (entry) => normalizeString(entry?.codigo_busqueda) === normalizedIdentifier
+            )?.customer_reference ??
+            full?.request?.credentials?.customerReference ??
+            null;
 
-            branchData.push({
-              comprobanteId: identifier,
-              customerReference,
-              full: detailFull,
-            });
-          } catch (detailError) {
-            const status = detailError?.status || detailError?.cause?.response?.status;
-            const body = detailError?.cause?.response?.data ?? {};
-            const reason = [
-              detailError?.message || '',
-              body?.mensaje,
-              body?.message,
-              body?.error?.description,
-            ]
-              .filter(Boolean)
-              .join(' ');
-
-            skipped.push({
-              branch: branchCredentials.branchCode,
-              comprobante: identifier,
-              reason: reason || undefined,
-              status: status || undefined,
-            });
-          }
+          branchData.push({
+            comprobanteId: identifier,
+            customerReference,
+            full: detailFull,
+          });
         }
 
         results.push({
@@ -757,49 +870,49 @@ export async function getMonroeCabecerasForAllBranches(query = {}) {
         }
       }
 
+      const { byIdentifier: detailMap, failures: detailFailures } =
+        await fetchComprobanteDetallesInBatches(branchCredentials, identifiers, query);
+
+      for (const failure of detailFailures) {
+        const status = failure.error?.status || failure.error?.cause?.response?.status;
+        const body = failure.error?.cause?.response?.data ?? {};
+        const reason = [
+          failure.error?.message || '',
+          body?.mensaje,
+          body?.message,
+          body?.error?.description,
+        ]
+          .filter(Boolean)
+          .join(' ');
+
+        skipped.push({
+          branch: branchCredentials.branchCode,
+          comprobante: failure.identifier,
+          reason: reason || undefined,
+          status: status || undefined,
+        });
+      }
+
       const branchData = [];
 
       for (const identifier of identifiers) {
-        try {
-          const detailFull = await fetchComprobanteDetalleForBranch(
-            branchCredentials,
-            identifier,
-            query
-          );
+        const normalizedIdentifier = normalizeString(identifier);
+        const detailFull = normalizedIdentifier ? detailMap.get(normalizedIdentifier) : null;
+        if (!detailFull) continue;
 
-          const normalizedIdentifier = normalizeString(identifier);
-          const customerReference =
-            (normalizedIdentifier && identifierToCustomerReference.get(normalizedIdentifier)) ??
-            slimEntries.find(
-              (entry) => normalizeString(entry?.codigo_busqueda) === normalizedIdentifier
-            )?.customer_reference ??
-            firstFull?.request?.credentials?.customerReference ??
-            null;
+        const customerReference =
+          (normalizedIdentifier && identifierToCustomerReference.get(normalizedIdentifier)) ??
+          slimEntries.find(
+            (entry) => normalizeString(entry?.codigo_busqueda) === normalizedIdentifier
+          )?.customer_reference ??
+          firstFull?.request?.credentials?.customerReference ??
+          null;
 
-          branchData.push({
-            comprobanteId: identifier,
-            customerReference,
-            full: detailFull,
-          });
-        } catch (detailError) {
-          const status = detailError?.status || detailError?.cause?.response?.status;
-          const body = detailError?.cause?.response?.data ?? {};
-          const reason = [
-            detailError?.message || '',
-            body?.mensaje,
-            body?.message,
-            body?.error?.description,
-          ]
-            .filter(Boolean)
-            .join(' ');
-
-          skipped.push({
-            branch: branchCredentials.branchCode,
-            comprobante: identifier,
-            reason: reason || undefined,
-            status: status || undefined,
-          });
-        }
+        branchData.push({
+          comprobanteId: identifier,
+          customerReference,
+          full: detailFull,
+        });
       }
 
       results.push({
