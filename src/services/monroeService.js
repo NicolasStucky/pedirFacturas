@@ -19,9 +19,7 @@ import {
 } from '../utils/isoDate.js';
 
 const MAX_RANGE_DAYS = 6; // política Monroe
-const CABECERA_DEFAULT_START = '2025-10-01 00:00:00';
-const CABECERA_RANGE_START_SUFFIX = '00:00:00';
-const CABECERA_RANGE_END_SUFFIX = '23:59:59';
+const CABECERA_DEFAULT_START = '2025-10-01';
 
 function getDefaultRange() {
   const referenceDate = parseISO8601(formatToISODate(new Date()));
@@ -734,8 +732,8 @@ export async function getMonroeCabecerasForAllBranches(query = {}) {
         const range = sequentialRanges[index];
         const rangeQuery = {
           ...query,
-          fechaDesde: `${range.desde} ${CABECERA_RANGE_START_SUFFIX}`,
-          fechaHasta: `${range.hasta} ${CABECERA_RANGE_END_SUFFIX}`,
+          fechaDesde: range.desde,
+          fechaHasta: range.hasta,
         };
 
         const full = await fetchComprobantesForBranch(
