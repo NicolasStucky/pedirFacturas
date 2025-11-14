@@ -472,16 +472,9 @@ async function fetchComprobantesForBranch(branchCredentials, query = {}, { preac
     await activateToken(credentials);
   }
 
-  const response = await withMonroeAuthRetry(
-    credentials,
-    async (token) => {
-      return await fetchComprobantes(params, token);
-    },
-    {
-      // Si ya activamos el token manualmente, evitamos pedir refresh inicial duplicado
-      refreshFirst: !preactivate,
-    }
-  );
+  const response = await withMonroeAuthRetry(credentials, async (token) => {
+    return await fetchComprobantes(params, token);
+  });
 
   return {
     provider: 'monroe',
@@ -506,13 +499,9 @@ async function fetchComprobanteDetalleForBranch(branchCredentials, comprobanteId
 
   const credentials = buildCredentials(query, branchCredentials);
 
-  const response = await withMonroeAuthRetry(
-    credentials,
-    async (token) => {
-      return await fetchComprobanteDetalle(identifier, token);
-    },
-    { refreshFirst: true }
-  );
+  const response = await withMonroeAuthRetry(credentials, async (token) => {
+    return await fetchComprobanteDetalle(identifier, token);
+  });
 
   return {
     provider: 'monroe',
