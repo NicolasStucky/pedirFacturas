@@ -20,10 +20,18 @@ import {
 
 const MAX_RANGE_DAYS = 6; // política Monroe
 
-const FIXED_DEFAULT_RANGE = Object.freeze({
-  desde: '2025-10-01',
-  hasta: '2025-10-06',
-});
+function getDefaultRange() {
+  const referenceDate = parseISO8601(formatToISODate(new Date()));
+  const lastAvailable = addUtcDays(referenceDate, -1);
+
+  const inclusiveSpan = Math.max(0, MAX_RANGE_DAYS - 1);
+  const start = addUtcDays(lastAvailable, -inclusiveSpan);
+
+  return {
+    desde: formatToISODate(start),
+    hasta: formatToISODate(lastAvailable),
+  };
+}
 
 const DD_MM_YYYY_REGEX =
   /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/;
@@ -93,7 +101,7 @@ function computeNextRangeStart(storedItems = []) {
   }
 
   if (!latest) {
-    return parseISO8601(FIXED_DEFAULT_RANGE.desde);
+    return parseISO8601(getDefaultRange().desde);
   }
 
   return addUtcDays(latest, 1);
@@ -101,17 +109,18 @@ function computeNextRangeStart(storedItems = []) {
 
 function generateSequentialRanges(startDate) {
   const today = parseISO8601(formatToISODate(new Date()));
-  if (startDate > today) return [];
+  const lastAvailable = addUtcDays(today, -1);
+  if (startDate > lastAvailable) return [];
 
   const ranges = [];
   let currentStart = new Date(startDate.getTime());
 
-  while (currentStart <= today) {
+  while (currentStart <= lastAvailable) {
     // El rango debe abarcar exactamente MAX_RANGE_DAYS días corridos.
     const inclusiveSpan = Math.max(0, MAX_RANGE_DAYS - 1);
     let currentEnd = addUtcDays(currentStart, inclusiveSpan);
-    if (currentEnd > today) {
-      currentEnd = today;
+    if (currentEnd > lastAvailable) {
+      currentEnd = lastAvailable;
     }
 
     ranges.push({
@@ -383,7 +392,7 @@ function sanitizeCredentials(credentials) {
 /* ============================
  * Parámetros de consulta
  * ============================ */
-function buildComprobantesParams(query = {}, defaults = FIXED_DEFAULT_RANGE) {
+function buildComprobantesParams(query = {}, defaults = getDefaultRange()) {
   
   // tomar de la query si vienen; si no, usar defaults
   const fechaDesde = normalizeString(
@@ -427,6 +436,29 @@ function mapComprobantesToSlim(full) {
   });
 }
 
+function mapComprobantesToIdentifiers(full) {
+  const items = Array.isArray(full?.response?.Comprobantes)
+    ? full.response.Comprobantes
+    : [];
+
+  const seen = new Set();
+
+  return items
+    .map((it) => {
+      const cab = it?.Comprobante?.Cabecera ?? it?.Cabecera ?? {};
+      return (
+        normalizeString(cab?.codigo_busqueda ?? cab?.codigoBusqueda ?? cab?.codigo) ||
+        null
+      );
+    })
+    .filter((identifier) => {
+      if (!identifier) return false;
+      if (seen.has(identifier)) return false;
+      seen.add(identifier);
+      return true;
+    });
+}
+
 /* ============================
  * Casos públicos del servicio
  * ============================ */
@@ -455,6 +487,37 @@ async function fetchComprobantesForBranch(branchCredentials, query = {}, { preac
     branch: branchCredentials.branchCode,
     request: {
       params,
+      credentials: sanitizeCredentials(credentials),
+    },
+    response,
+  };
+}
+
+async function fetchComprobanteDetalleForBranch(branchCredentials, comprobanteId, query = {}) {
+  const identifier = normalizeString(comprobanteId);
+  if (!identifier) {
+    const error = new Error(
+      'Debe indicar el identificador del comprobante en la ruta (por ejemplo FC-A-0001-00000001)'
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  const credentials = buildCredentials(query, branchCredentials);
+
+  const response = await withMonroeAuthRetry(
+    credentials,
+    async (token) => {
+      return await fetchComprobanteDetalle(identifier, token);
+    },
+    { refreshFirst: true }
+  );
+
+  return {
+    provider: 'monroe',
+    branch: branchCredentials.branchCode,
+    request: {
+      comprobanteId: identifier,
       credentials: sanitizeCredentials(credentials),
     },
     response,
@@ -562,36 +625,84 @@ export async function getMonroeComprobantesForAllBranches(query = {}) {
 }
 
 export async function getMonroeComprobanteDetalle(branchCode, comprobanteId, query = {}) {
-  const identifier = normalizeString(comprobanteId);
-  if (!identifier) {
-    const error = new Error(
-      'Debe indicar el identificador del comprobante en la ruta (por ejemplo FC-A-0001-00000001)'
-    );
-    error.status = 400;
-    throw error;
+  const branchCredentials = await getBranchCredentials(branchCode);
+  return await fetchComprobanteDetalleForBranch(branchCredentials, comprobanteId, query);
+}
+
+export async function getMonroeCabecerasForAllBranches(query = {}) {
+  const branches = await listMonroeBranches();
+  const results = [];
+  const skipped = [];
+
+  for (const branch of branches) {
+    const branchCredentials = await getBranchCredentials(branch);
+
+    try {
+      const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
+      const identifiers = mapComprobantesToIdentifiers(full);
+      const branchData = [];
+
+      for (const identifier of identifiers) {
+        try {
+          const detailFull = await fetchComprobanteDetalleForBranch(
+            branchCredentials,
+            identifier,
+            query
+          );
+
+          branchData.push({ comprobanteId: identifier, full: detailFull });
+        } catch (detailError) {
+          const status = detailError?.status || detailError?.cause?.response?.status;
+          const body = detailError?.cause?.response?.data ?? {};
+          const reason = [
+            detailError?.message || '',
+            body?.mensaje,
+            body?.message,
+            body?.error?.description,
+          ]
+            .filter(Boolean)
+            .join(' ');
+
+          skipped.push({
+            branch: branchCredentials.branchCode,
+            comprobante: identifier,
+            reason: reason || undefined,
+            status: status || undefined,
+          });
+        }
+      }
+
+      results.push({
+        provider: 'monroe',
+        branch: branchCredentials.branchCode,
+        data: branchData,
+      });
+    } catch (e) {
+      const status = e?.status || e?.cause?.response?.status;
+      const body = e?.cause?.response?.data ?? {};
+      const reason = [
+        e?.message || '',
+        body?.mensaje,
+        body?.message,
+        body?.error?.description,
+      ]
+        .filter(Boolean)
+        .join(' ');
+
+      if (
+        status === 401 ||
+        /API-cli-2\.2/i.test(reason) ||
+        /Credenciales incompletas/i.test(reason)
+      ) {
+        skipped.push({ branch: branchCredentials.branchCode, reason: reason || undefined, status });
+        continue;
+      }
+
+      throw e;
+    }
   }
 
-  const branchCredentials = await getBranchCredentials(branchCode);
-  const credentials = buildCredentials(query, branchCredentials);
-
-  // También fuerza activar/refrescar token antes de consultar + retry ante 401
-  const response = await withMonroeAuthRetry(
-    credentials,
-    async (token) => {
-      return await fetchComprobanteDetalle(identifier, token);
-    },
-    { refreshFirst: true }
-  );
-
-  return {
-    provider: 'monroe',
-    branch: branchCredentials.branchCode,
-    request: {
-      comprobanteId: identifier,
-      credentials: sanitizeCredentials(credentials),
-    },
-    response,
-  };
+  return { results, skipped };
 }
 
 /** 🔎 Diagnóstico: prueba /Auth/login con las credenciales resultantes y devuelve datos útiles. */
@@ -650,6 +761,7 @@ export async function monroeLoginProbe(branchCode, query = {}) {
 export default {
   getMonroeComprobantes,
   getMonroeComprobanteDetalle,
+  getMonroeCabecerasForAllBranches,
   getMonroeComprobantesSlim,
   getMonroeComprobantesForAllBranches,
   monroeLoginProbe,
