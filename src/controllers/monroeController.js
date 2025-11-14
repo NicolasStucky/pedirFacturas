@@ -126,7 +126,7 @@ function alignImpuestos(rawList, templates) {
   );
 }
 
-function buildComprobantePayload(full, { includeDetalle = true } = {}) {
+function buildComprobantePayload(full, { includeDetalle = true, branch } = {}) {
   const resp = full?.response ?? {};
 
   const cabeceraRaw =
@@ -139,7 +139,16 @@ function buildComprobantePayload(full, { includeDetalle = true } = {}) {
   const resumenRaw = cabeceraRaw?.Resumen ?? cabeceraRaw?.resumen ?? {};
   const autorizacionRaw = cabeceraRaw?.Autorizacion ?? cabeceraRaw?.autorizacion ?? {};
 
+  const cabeceraBranch =
+    branch ??
+    cabeceraRaw?.branch ??
+    cabeceraRaw?.sucursal ??
+    cabeceraRaw?.sucursal_codigo ??
+    resp?.branch ??
+    null;
+
   const cabecera = {
+    branch: cabeceraBranch,
     codigo_comprobante:
       cabeceraRaw?.codigo_comprobante ??
       cabeceraRaw?.codigoComprobante ??
@@ -395,7 +404,10 @@ export async function getMonroeComprobanteDetalleController(req, res, next) {
 
     // Servicio (login/refresh/retry manejado en capa service)
     const full = await getMonroeComprobanteDetalle(branch, comprobanteId, req.query);
-    const payload = buildComprobantePayload(full, { includeDetalle: true });
+    const payload = buildComprobantePayload(full, {
+      includeDetalle: true,
+      branch,
+    });
 
     res.json(payload);
   } catch (error) {
@@ -415,6 +427,7 @@ export async function listMonroeComprobantesCabecera(req, res, next) {
           if (!full) return null;
           const payload = buildComprobantePayload(full, {
             includeDetalle: false,
+            branch: entry.branch,
           });
 
           return {
