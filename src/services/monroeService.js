@@ -640,6 +640,19 @@ export async function getMonroeCabecerasForAllBranches(query = {}) {
     try {
       const full = await fetchComprobantesForBranch(branchCredentials, query, { preactivate: true });
       const identifiers = mapComprobantesToIdentifiers(full);
+      const slimEntries = mapComprobantesToSlim(full);
+      const identifierToCustomerReference = new Map();
+
+      for (const entry of slimEntries) {
+        const identifier = normalizeString(entry?.codigo_busqueda);
+        const customerRef = entry?.customer_reference ?? null;
+        if (!identifier) continue;
+        if (customerRef == null) continue;
+        if (!identifierToCustomerReference.has(identifier)) {
+          identifierToCustomerReference.set(identifier, customerRef);
+        }
+      }
+
       const branchData = [];
 
       for (const identifier of identifiers) {
@@ -650,7 +663,19 @@ export async function getMonroeCabecerasForAllBranches(query = {}) {
             query
           );
 
-          branchData.push({ comprobanteId: identifier, full: detailFull });
+          const customerReference =
+            (identifier && identifierToCustomerReference.get(identifier)) ??
+            slimEntries.find(
+              (entry) => normalizeString(entry?.codigo_busqueda) === normalizeString(identifier)
+            )?.customer_reference ??
+            full?.request?.credentials?.customerReference ??
+            null;
+
+          branchData.push({
+            comprobanteId: identifier,
+            customerReference,
+            full: detailFull,
+          });
         } catch (detailError) {
           const status = detailError?.status || detailError?.cause?.response?.status;
           const body = detailError?.cause?.response?.data ?? {};

@@ -126,7 +126,10 @@ function alignImpuestos(rawList, templates) {
   );
 }
 
-function buildComprobantePayload(full, { includeDetalle = true, branch } = {}) {
+function buildComprobantePayload(
+  full,
+  { includeDetalle = true, branch, customerReference } = {}
+) {
   const resp = full?.response ?? {};
 
   const cabeceraRaw =
@@ -147,8 +150,16 @@ function buildComprobantePayload(full, { includeDetalle = true, branch } = {}) {
     resp?.branch ??
     null;
 
+  const cabeceraCustomerReference =
+    customerReference ??
+    cabeceraRaw?.customer_reference ??
+    cabeceraRaw?.customerReference ??
+    full?.request?.credentials?.customerReference ??
+    null;
+
   const cabecera = {
     branch: cabeceraBranch,
+    customer_reference: cabeceraCustomerReference,
     codigo_comprobante:
       cabeceraRaw?.codigo_comprobante ??
       cabeceraRaw?.codigoComprobante ??
@@ -423,11 +434,12 @@ export async function listMonroeComprobantesCabecera(req, res, next) {
       provider: entry.provider,
       branch: entry.branch,
       data: entry.data
-        .map(({ comprobanteId, full }) => {
+        .map(({ comprobanteId, customerReference, full }) => {
           if (!full) return null;
           const payload = buildComprobantePayload(full, {
             includeDetalle: false,
             branch: entry.branch,
+            customerReference,
           });
 
           return {
