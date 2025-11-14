@@ -26,13 +26,21 @@ function getFirst(obj, paths) {
 const TOTAL_IMPUESTOS_TEMPLATES = [
   { tipo: 'IVA', descripcion: 'I.V.A.                     21%' },
   { tipo: 'PER', descripcion: 'Perc. I.V.A. R.G. 3337      3%' },
-  { tipo: 'PER', descripcion: 'Perc Mun Com,Ind y Serv 0.6%' }
+  { tipo: 'PER', descripcion: 'Perc Mun Com,Ind y Serv 0.6%' },
+  { tipo: 'IB', descripcion: 'Perc.IB 99/02 Cordoba' },
+  { tipo: 'IMPINT', descripcion: 'IMP INT', defaultDescripcion: 'null' }
 ];
 
 const DETALLE_IMPUESTOS_TEMPLATES = [
   { tipo: 'IVA', descripcion: 'I.V.A.                     21%', tasa: 21 },
   { tipo: 'PER', descripcion: 'Perc. I.V.A. R.G. 3337      3%', tasa: 3 },
-  { tipo: 'PER', descripcion: 'Perc Mun Com,Ind y Serv 0.6%', tasa: 0.6 }
+  { tipo: 'PER', descripcion: 'Perc Mun Com,Ind y Serv 0.6%', tasa: 0.6 },
+  { tipo: 'IB', descripcion: 'Perc.IB 99/02 Cordoba' },
+  {
+    tipo: 'IMPINT',
+    descripcion: 'IMP INT',
+    defaultDescripcion: 'null'
+  }
 ];
 
 function toNumberOrNull(value) {
@@ -56,7 +64,12 @@ function normalizeImpuesto(raw) {
     raw?.importe_total ??
     raw?.importeTotal ??
     raw?.importe_impuesto ??
-    raw?.importeImpuesto;
+    raw?.importeImpuesto ??
+    raw?.iint ??
+    raw?.impInt ??
+    raw?.imp_int ??
+    raw?.ImpInt ??
+    raw?.IMPINT;
   return {
     tipo: raw?.tipo ?? raw?.Tipo ?? raw?.codigo ?? null,
     descripcion:
@@ -99,6 +112,15 @@ function alignImpuestos(rawList, templates) {
       tipo: match?.tipo ?? null,
       descripcion: match?.descripcion ?? null
     };
+
+    if (!match) {
+      if (Object.prototype.hasOwnProperty.call(tpl, 'defaultTipo')) {
+        base.tipo = tpl.defaultTipo;
+      }
+      if (Object.prototype.hasOwnProperty.call(tpl, 'defaultDescripcion')) {
+        base.descripcion = tpl.defaultDescripcion;
+      }
+    }
 
     if (Object.prototype.hasOwnProperty.call(tpl, 'tasa')) {
       base.tasa = match?.tasa ?? null;
