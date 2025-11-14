@@ -32,6 +32,7 @@ import { Router } from 'express';
 import {
   getMonroeComprobanteDetalleController,
   listMonroeComprobantes,
+  listMonroeComprobantesCabecera,
   listMonroeComprobantesGeneral,
   monroeLoginProbeController,
   listMonroeComprobantesSlim
@@ -41,6 +42,9 @@ const router = Router();
 
 // Consulta general (todas las sucursales)
 router.get('/comprobantes/general', listMonroeComprobantesGeneral);
+
+// Consulta de cabeceras (todas las sucursales)
+router.get('/comprobantes/cabecera', listMonroeComprobantesCabecera);
 
 // Diagnóstico de login
 router.get('/:branchs/_login', monroeLoginProbeController);
